@@ -7,7 +7,6 @@ uint8_t demoNotes[] = {63, 67, 69, 70, 74, 75};
 uint16_t demoDuration = 118;
 uint8_t demoClock = 0;
 uint8_t note = demoNotes[0];
-uint8_t endPoint = 0;
 
 void setup() {
   Serial.begin(31250);
@@ -41,7 +40,6 @@ void sendAllNotesOff(uint8_t channel) {
 
 void sendMIDI(uint8_t status, uint8_t data1, uint8_t data2) {
   //  debugMIDI(status, data1, data2);
-
   Serial.write(status);
   Serial.write(data1);
   Serial.write(data2);
