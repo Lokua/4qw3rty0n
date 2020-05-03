@@ -1,11 +1,7 @@
 #include <PS2KeyAdvanced.h>
 #include "constants.h"
 
-// when on, will print MIDI statements to the Serial Monitor instead of
-// actually sending MIDI since Arduino Uno only has a single hardware Serial and cannot
-// println under the MIDI BUAD rate
 #define DEBUG_PS2 0
-
 #define NOTE_OFF 128
 #define NOTE_ON 144
 #define DEFAULT_VELOCITY 127
@@ -14,28 +10,21 @@
 
 PS2KeyAdvanced keyboard;
 
-const uint16_t BAUD = DEBUG_PS2 ? 9600 : 31250;
-
 struct programState
 {
   uint8_t channel = 0;
-  bool heldKeys[255] = {};
+  bool heldNotes[128] = {};
   bool hold = false;
   uint8_t scaleIndex = 0;
-  uint8_t octaveOffset = 2;
+  uint8_t octaveOffset = 3;
 };
 typedef struct programState ProgramState;
 ProgramState state;
 
 void setup() {
-  Serial.begin(BAUD);
+  Serial.begin(DEBUG_PS2 ? 9600 : 31250);
   keyboard.begin(DATA_PIN, IRQ_PIN);
   keyboard.setNoRepeat(1);
-
-  /* see `util.js` for why this commented out code is here */
-  //  for (uint8_t i = 0; i < sizeof(KEYS); i++) {
-  //    Serial.println(KEYS[i]);
-  //  }
 }
 
 void loop() {
@@ -45,6 +34,8 @@ void loop() {
 
   uint16_t key = keyboard.read();
   uint8_t keyCode = key & 0xFF;
+  bool isNoteKey = isNote(keyCode);
+  int8_t note = isNoteKey ? getMIDINote(getKeyIndex(keyCode)) : -1;
 
   if (DEBUG_PS2) {
     if (!isKeyUp(key)) {
@@ -54,16 +45,16 @@ void loop() {
   }
 
   if (isKeyUp(key)) {
-    if (isNote(keyCode) && !state.hold) {
-      sendNoteOff(getMIDINote(KEY_CODE_TO_INDEX[keyCode]));
-      state.heldKeys[keyCode] = false;
+    if (isNoteKey && !state.hold) {
+      sendNoteOff(note);
+      state.heldNotes[note] = false;
     }
     return;
   }
 
-  if (isNote(keyCode) && !state.heldKeys[keyCode]) {
-    sendNoteOn(getMIDINote(KEY_CODE_TO_INDEX[keyCode]));
-    state.heldKeys[keyCode] = true;
+  if (isNoteKey && !state.heldNotes[note]) {
+    sendNoteOn(note);
+    state.heldNotes[note] = true;
     return;
   }
 
@@ -73,7 +64,7 @@ void loop() {
   }
 
   if (isHold(keyCode)) {
-    DEBUG_PS2 && Serial.println("hold");
+    state.hold = !state.hold;
     return;
   }
 
@@ -84,7 +75,24 @@ void loop() {
 
   if (isPanicButton(keyCode)) {
     sendAllNotesOff();
+    initHeldKeys();
     return;
+  }
+}
+
+int8_t getKeyIndex(uint8_t keyCode) {
+  for (uint8_t i = 0; i < sizeof(KEY_MAP) / sizeof(KEY_MAP[0]); i++) {
+    if (KEY_MAP[i][0] == keyCode) {
+      return KEY_MAP[i][1];
+    }
+  }
+
+  return -1;
+}
+
+void initHeldKeys() {
+  for (uint8_t i = 0; i < 128; i++) {
+    state.heldNotes[i] = false;
   }
 }
 
@@ -93,8 +101,8 @@ void setScale(uint8_t keyCode) {
 }
 
 void setOctave(uint8_t keyCode) {
-  uint8_t x = keyCode == PS2_KEY_UP_ARROW ? 1 : -1;
-  state.octaveOffset = x < 0 ? 0 : x > 3 ? 3 : state.octaveOffset + x;
+  uint8_t x = state.octaveOffset + (keyCode == PS2_KEY_UP_ARROW ? 1 : -1);
+  state.octaveOffset = x < 0 ? 0 : x > 5 ? 5 : x;
 }
 
 uint8_t getMIDINote(uint8_t keyCodeIndex) {
@@ -163,57 +171,8 @@ bool isKeyUp(uint16_t key) {
   return status_ == 0x80 || status_ == 0x81;
 }
 
-// see createKeyToIndex.js for generating these conditions
-bool isNote(uint8_t keyCode) {
-  return keyCode == 28 ||
-         keyCode == 30 ||
-         keyCode == 48 ||
-         keyCode == 49 ||
-         keyCode == 50 ||
-         keyCode == 51 ||
-         keyCode == 52 ||
-         keyCode == 53 ||
-         keyCode == 54 ||
-         keyCode == 55 ||
-         keyCode == 56 ||
-         keyCode == 57 ||
-         keyCode == 59 ||
-         keyCode == 60 ||
-         keyCode == 61 ||
-         keyCode == 62 ||
-         keyCode == 64 ||
-         keyCode == 65 ||
-         keyCode == 66 ||
-         keyCode == 67 ||
-         keyCode == 68 ||
-         keyCode == 69 ||
-         keyCode == 7 ||
-         keyCode == 70 ||
-         keyCode == 71 ||
-         keyCode == 72 ||
-         keyCode == 73 ||
-         keyCode == 74 ||
-         keyCode == 75 ||
-         keyCode == 76 ||
-         keyCode == 77 ||
-         keyCode == 78 ||
-         keyCode == 79 ||
-         keyCode == 80 ||
-         keyCode == 81 ||
-         keyCode == 82 ||
-         keyCode == 83 ||
-         keyCode == 84 ||
-         keyCode == 85 ||
-         keyCode == 86 ||
-         keyCode == 87 ||
-         keyCode == 88 ||
-         keyCode == 89 ||
-         keyCode == 90 ||
-         keyCode == 91 ||
-         keyCode == 92 ||
-         keyCode == 93 ||
-         keyCode == 94 ||
-         keyCode == 95;
+bool isNote(int8_t keyCode) {
+  return getKeyIndex(keyCode) > -1;
 }
 
 bool isAlphaKey(uint8_t keyCode) {
@@ -229,7 +188,7 @@ bool isScale(uint8_t keyCode) {
 }
 
 bool isHold(uint8_t keyCode) {
-  return keyCode == PS2_KEY_CAPS;
+  return keyCode == PS2_KEY_HOME;
 }
 
 bool isOctave(uint8_t keyCode) {
