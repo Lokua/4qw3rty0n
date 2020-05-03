@@ -1,5 +1,5 @@
 #include <PS2KeyAdvanced.h>
-#include "constants.h"
+#include "scales.h"
 
 #define DEBUG_PS2 0
 #define NOTE_OFF 128
@@ -7,6 +7,7 @@
 #define DEFAULT_VELOCITY 127
 #define DATA_PIN 4
 #define IRQ_PIN  3
+#define N_KEYS 50
 
 PS2KeyAdvanced keyboard;
 
@@ -17,6 +18,65 @@ struct programState
   bool hold = false;
   uint8_t scaleIndex = 0;
   uint8_t octaveOffset = 3;
+  uint8_t root = 0;
+  uint8_t rowOffsets[4] = {0, 0, 0, 0};
+
+  uint8_t keys[N_KEYS][2] = {
+    // row 1
+    {PS2_KEY_Z, 0},
+    {PS2_KEY_X, 1},
+    {PS2_KEY_C, 2},
+    {PS2_KEY_V, 3},
+    {PS2_KEY_B, 4},
+    {PS2_KEY_N, 5},
+    {PS2_KEY_M, 6},
+    {PS2_KEY_COMMA, 7},
+    {PS2_KEY_DOT, 8},
+    {PS2_KEY_DIV, 9},
+    {PS2_KEY_R_SHIFT, 10},
+    // row 2
+    {PS2_KEY_A, 2},
+    {PS2_KEY_S, 3},
+    {PS2_KEY_D, 4},
+    {PS2_KEY_F, 5},
+    {PS2_KEY_G, 6},
+    {PS2_KEY_H, 7},
+    {PS2_KEY_J, 8},
+    {PS2_KEY_K, 9},
+    {PS2_KEY_L, 10},
+    {PS2_KEY_SEMI, 11},
+    {PS2_KEY_APOS, 12},
+    {PS2_KEY_ENTER, 13},
+    // row 3
+    {PS2_KEY_Q, 4},
+    {PS2_KEY_W, 5},
+    {PS2_KEY_E, 6},
+    {PS2_KEY_R, 7},
+    {PS2_KEY_T, 8},
+    {PS2_KEY_Y, 9},
+    {PS2_KEY_U, 10},
+    {PS2_KEY_I, 11},
+    {PS2_KEY_O, 12},
+    {PS2_KEY_P, 13},
+    {PS2_KEY_OPEN_SQ, 14},
+    {PS2_KEY_CLOSE_SQ, 15},
+    {PS2_KEY_BACK, 16},
+    // row 4
+    {PS2_KEY_SINGLE, 6},
+    {PS2_KEY_1, 7},
+    {PS2_KEY_2, 8},
+    {PS2_KEY_3, 9},
+    {PS2_KEY_4, 10},
+    {PS2_KEY_5, 11},
+    {PS2_KEY_6, 12},
+    {PS2_KEY_7, 13},
+    {PS2_KEY_8, 14},
+    {PS2_KEY_9, 15},
+    {PS2_KEY_0, 16},
+    {PS2_KEY_MINUS, 17},
+    {PS2_KEY_EQUAL, 18},
+    {PS2_KEY_BS, 19}
+  };
 };
 typedef struct programState ProgramState;
 ProgramState state;
@@ -25,6 +85,8 @@ void setup() {
   Serial.begin(DEBUG_PS2 ? 9600 : 31250);
   keyboard.begin(DATA_PIN, IRQ_PIN);
   keyboard.setNoRepeat(1);
+
+  setScale(PS2_KEY_F1);
 }
 
 void loop() {
@@ -34,8 +96,9 @@ void loop() {
 
   uint16_t key = keyboard.read();
   uint8_t keyCode = key & 0xFF;
-  bool isNoteKey = isNote(keyCode);
-  int8_t note = isNoteKey ? getMIDINote(getKeyIndex(keyCode)) : -1;
+  int8_t keyIndex = getKeyIndex(keyCode);
+  bool isNote = keyIndex > -1;
+  int8_t note = isNote ? getMIDINote(keyIndex) : -1;
 
   if (DEBUG_PS2) {
     if (!isKeyUp(key)) {
@@ -45,14 +108,14 @@ void loop() {
   }
 
   if (isKeyUp(key)) {
-    if (isNoteKey && !state.hold) {
+    if (isNote && !state.hold) {
       sendNoteOff(note);
       state.heldNotes[note] = false;
     }
     return;
   }
 
-  if (isNoteKey && !state.heldNotes[note]) {
+  if (isNote && !state.heldNotes[note]) {
     sendNoteOn(note);
     state.heldNotes[note] = true;
     return;
@@ -81,9 +144,9 @@ void loop() {
 }
 
 int8_t getKeyIndex(uint8_t keyCode) {
-  for (uint8_t i = 0; i < sizeof(KEY_MAP) / sizeof(KEY_MAP[0]); i++) {
-    if (KEY_MAP[i][0] == keyCode) {
-      return KEY_MAP[i][1];
+  for (uint8_t i = 0; i < N_KEYS; i++) {
+    if (state.keys[i][0] == keyCode) {
+      return state.keys[i][1];
     }
   }
 
@@ -98,6 +161,30 @@ void initHeldKeys() {
 
 void setScale(uint8_t keyCode) {
   state.scaleIndex = keyCode - PS2_KEY_F1;
+  uint8_t scaleLength = getScaleLength(state.scaleIndex);
+  updateRowOffsets(scaleLength);
+
+  uint8_t key = 0;
+  uint8_t row = 0;
+  uint8_t j = 0;
+
+  for (uint8_t i = 0; i < N_KEYS; i++) {
+    key = state.keys[i][0];
+
+    if (key == PS2_KEY_A) {
+      row = 1;
+      j = 0;
+    } else if (key == PS2_KEY_Q) {
+      row = 2;
+      j = 0;
+    } else if (key == PS2_KEY_SINGLE) {
+      row = 3;
+      j = 0;
+    }
+
+    state.keys[i][1] = j + state.rowOffsets[row];
+    j++;
+  }
 }
 
 void setOctave(uint8_t keyCode) {
@@ -105,10 +192,8 @@ void setOctave(uint8_t keyCode) {
   state.octaveOffset = x < 0 ? 0 : x > 5 ? 5 : x;
 }
 
-uint8_t getMIDINote(uint8_t keyCodeIndex) {
-  uint8_t scaleLength;
-
-  switch (state.scaleIndex) {
+uint8_t getScaleLength(uint8_t scaleIndex) {
+  switch (scaleIndex) {
     case 0:
     case 1:
     case 2:
@@ -118,17 +203,44 @@ uint8_t getMIDINote(uint8_t keyCodeIndex) {
     case 9:
     case 10:
     case 11:
-      scaleLength = 7;
-      break;
+      return 7;
     case 3:
     case 7:
-      scaleLength = 5;
-      break;
+      return 5;
     case 6:
-      scaleLength = 6;
+      return 6;
+  }
+}
+
+void updateRowOffsets(uint8_t scaleLength) {
+  switch (scaleLength) {
+    case 7:
+      state.rowOffsets[0] = 0;
+      state.rowOffsets[1] = 2;
+      state.rowOffsets[2] = 4;
+      state.rowOffsets[3] = 6;
+      break;
+
+    // blues
+    case 6:
+      state.rowOffsets[0] = 0;
+      state.rowOffsets[1] = 2;
+      state.rowOffsets[2] = 4;
+      state.rowOffsets[3] = 5;
+      break;
+
+    // pentatonics
+    case 5:
+      state.rowOffsets[0] = 0;
+      state.rowOffsets[1] = 2;
+      state.rowOffsets[2] = 4;
+      state.rowOffsets[3] = 4;
       break;
   }
+}
 
+uint8_t getMIDINote(uint8_t keyCodeIndex) {
+  uint8_t scaleLength = getScaleLength(state.scaleIndex);
   uint8_t pitchClassIndex = keyCodeIndex % scaleLength;
   uint8_t pitchClass = getPitchClass(pitchClassIndex);
   uint8_t octave = (floor(keyCodeIndex / scaleLength) * 12) + (state.octaveOffset * 12);
@@ -138,6 +250,7 @@ uint8_t getMIDINote(uint8_t keyCodeIndex) {
 
 uint8_t getPitchClass(uint8_t index) {
   switch (state.scaleIndex) {
+    // F1-F4
     case 0:
       return MAJOR[index];
     case 1:
@@ -146,6 +259,8 @@ uint8_t getPitchClass(uint8_t index) {
       return MIXOLYDIAN[index];
     case 3:
       return MAJOR_PENTATONIC[index];
+
+    // F5-F8
     case 4:
       return MINOR[index];
     case 5:
@@ -154,6 +269,8 @@ uint8_t getPitchClass(uint8_t index) {
       return BLUES_MINOR[index];
     case 7:
       return MINOR_PENTATONIC[index];
+
+    // F9-F12
     case 8:
       return DORIAN[index];
     case 9:
@@ -169,10 +286,6 @@ uint8_t getPitchClass(uint8_t index) {
 bool isKeyUp(uint16_t key) {
   uint16_t status_ = key >> 8;
   return status_ == 0x80 || status_ == 0x81;
-}
-
-bool isNote(int8_t keyCode) {
-  return getKeyIndex(keyCode) > -1;
 }
 
 bool isAlphaKey(uint8_t keyCode) {
