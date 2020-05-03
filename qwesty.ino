@@ -4,7 +4,7 @@
 // when on, will print MIDI statements to the Serial Monitor instead of
 // actually sending MIDI since Arduino Uno only has a single hardware Serial and cannot
 // println under the MIDI BUAD rate
-#define DEBUG_PS2 1
+#define DEBUG_PS2 0
 
 #define NOTE_OFF 128
 #define NOTE_ON 144
@@ -22,6 +22,7 @@ struct programState
   bool heldKeys[255] = {};
   bool hold = false;
   uint8_t scaleIndex = 0;
+  uint8_t octaveOffset = 2;
 };
 typedef struct programState ProgramState;
 ProgramState state;
@@ -30,10 +31,6 @@ void setup() {
   Serial.begin(BAUD);
   keyboard.begin(DATA_PIN, IRQ_PIN);
   keyboard.setNoRepeat(1);
-
-  if (!DEBUG_PS2) {
-    sendAllNotesOff(state.channel);
-  }
 
   /* see `util.js` for why this commented out code is here */
   //  for (uint8_t i = 0; i < sizeof(KEYS); i++) {
@@ -49,33 +46,119 @@ void loop() {
   uint16_t key = keyboard.read();
   uint8_t keyCode = key & 0xFF;
 
-  Serial.print("keyCode");
-  Serial.print(isKeyUp(key) ? "(keyup): " : ": ");
-  Serial.println(keyCode);
+  if (DEBUG_PS2) {
+    if (!isKeyUp(key)) {
+      Serial.print("keyCode (keyDown): ");
+      Serial.println(keyCode);
+    }
+  }
 
   if (isKeyUp(key)) {
     if (isNote(keyCode) && !state.hold) {
-      sendNoteOff(keyCode);
+      sendNoteOff(getMIDINote(KEY_CODE_TO_INDEX[keyCode]));
       state.heldKeys[keyCode] = false;
     }
-  } else if (isNote(keyCode) && !state.heldKeys[keyCode]) {
-    Serial.print("index: ");
-    Serial.println(KEY_CODE_TO_INDEX[keyCode]);
-    sendNoteOn(keyCode);
+    return;
+  }
+
+  if (isNote(keyCode) && !state.heldKeys[keyCode]) {
+    sendNoteOn(getMIDINote(KEY_CODE_TO_INDEX[keyCode]));
     state.heldKeys[keyCode] = true;
-  } else if (isScale(keyCode)) {
-    Serial.println("scale");
-  } else if (isHold(keyCode)) {
-    Serial.println("hold");
-  } else if (isOctave(keyCode)) {
-    Serial.println("octave");
+    return;
+  }
+
+  if (isScale(keyCode)) {
+    setScale(keyCode);
+    return;
+  }
+
+  if (isHold(keyCode)) {
+    DEBUG_PS2 && Serial.println("hold");
+    return;
+  }
+
+  if (isOctave(keyCode)) {
+    setOctave(keyCode);
+    return;
+  }
+
+  if (isPanicButton(keyCode)) {
+    sendAllNotesOff();
+    return;
   }
 }
 
+void setScale(uint8_t keyCode) {
+  state.scaleIndex = keyCode - PS2_KEY_F1;
+}
+
+void setOctave(uint8_t keyCode) {
+  uint8_t x = keyCode == PS2_KEY_UP_ARROW ? 1 : -1;
+  state.octaveOffset = x < 0 ? 0 : x > 3 ? 3 : state.octaveOffset + x;
+}
+
+uint8_t getMIDINote(uint8_t keyCodeIndex) {
+  uint8_t scaleLength;
+
+  switch (state.scaleIndex) {
+    case 0:
+    case 1:
+    case 2:
+    case 4:
+    case 5:
+    case 8:
+    case 9:
+    case 10:
+    case 11:
+      scaleLength = 7;
+      break;
+    case 3:
+    case 7:
+      scaleLength = 5;
+      break;
+    case 6:
+      scaleLength = 6;
+      break;
+  }
+
+  uint8_t pitchClassIndex = keyCodeIndex % scaleLength;
+  uint8_t pitchClass = getPitchClass(pitchClassIndex);
+  uint8_t octave = (floor(keyCodeIndex / scaleLength) * 12) + (state.octaveOffset * 12);
+
+  return octave + pitchClass;
+}
+
+uint8_t getPitchClass(uint8_t index) {
+  switch (state.scaleIndex) {
+    case 0:
+      return MAJOR[index];
+    case 1:
+      return HARMONIC_MAJOR[index];
+    case 2:
+      return MIXOLYDIAN[index];
+    case 3:
+      return MAJOR_PENTATONIC[index];
+    case 4:
+      return MINOR[index];
+    case 5:
+      return HARMONIC_MINOR[index];
+    case 6:
+      return BLUES_MINOR[index];
+    case 7:
+      return MINOR_PENTATONIC[index];
+    case 8:
+      return DORIAN[index];
+    case 9:
+      return PHRYGIAN[index];
+    case 10:
+      return PHRYGIAN_DOMINANT[index];
+    case 11:
+      return LYDIAN_DOMINANT[index];
+  }
+}
+
+
 bool isKeyUp(uint16_t key) {
-  //  Serial.print("keyup debug: ");
-  //  Serial.print(key >> 8, HEX);
-  //  Serial.print(" ");
   uint16_t status_ = key >> 8;
   return status_ == 0x80 || status_ == 0x81;
 }
@@ -153,25 +236,21 @@ bool isOctave(uint8_t keyCode) {
   return keyCode == PS2_KEY_UP_ARROW || keyCode == PS2_KEY_DN_ARROW;
 }
 
-void sendNoteOn(uint8_t note) {
-  sendNoteOn(state.channel, note, DEFAULT_VELOCITY);
+bool isPanicButton(uint8_t keyCode) {
+  return keyCode == PS2_KEY_DELETE;
 }
 
-void sendNoteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
-  sendMIDI(NOTE_ON + channel, note, velocity);
+void sendNoteOn(uint8_t note) {
+  sendMIDI(NOTE_ON + state.channel, note, DEFAULT_VELOCITY);
 }
 
 void sendNoteOff(uint8_t note) {
   sendMIDI(NOTE_OFF + state.channel, note, 0);
 }
 
-void sendNoteOff(uint8_t channel, uint8_t note) {
-  sendMIDI(NOTE_OFF + channel, note, 0);
-}
-
-void sendAllNotesOff(uint8_t channel) {
+void sendAllNotesOff() {
   for (uint8_t i = 0; i < 128; i++) {
-    sendNoteOff(channel, i);
+    sendNoteOff(i);
   }
 }
 
