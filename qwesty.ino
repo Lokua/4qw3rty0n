@@ -1,15 +1,23 @@
+#include <LiquidCrystal.h>
 #include <PS2KeyAdvanced.h>
 #include "scales.h"
 
-#define DEBUG_PS2 0
+#define DEBUG_PS2 1
 #define NOTE_OFF 128
 #define NOTE_ON 144
 #define DEFAULT_VELOCITY 127
 #define DATA_PIN 4
 #define IRQ_PIN  3
 #define N_KEYS 50
+#define PRINT_MODE_DEBUG 0
+#define PRINT_MODE_LIVE 1
+#define PRINT_MODE_MIDI 2
+#define PRINT_MODE_HELP 3
 
+LiquidCrystal lcd(12, 11, 5, 8, 9, 2);
 PS2KeyAdvanced keyboard;
+
+uint8_t lockPanic = 0;
 
 struct programState
 {
@@ -20,6 +28,8 @@ struct programState
   uint8_t octaveOffset = 3;
   uint8_t root = 0;
   uint8_t rowOffsets[4] = {0, 0, 0, 0};
+  uint8_t printMode = PRINT_MODE_LIVE;
+  uint8_t lastNote = 0;
 
   uint8_t keys[N_KEYS][2] = {
     // row 1
@@ -83,8 +93,13 @@ ProgramState state;
 
 void setup() {
   Serial.begin(DEBUG_PS2 ? 9600 : 31250);
+
   keyboard.begin(DATA_PIN, IRQ_PIN);
   keyboard.setNoRepeat(1);
+  keyboard.setLock(PS2_LOCK_NUM);
+
+  lcd.begin(16, 2);
+  lcd.print("Hello, world");
 
   setScale(PS2_KEY_F1);
 }
@@ -100,11 +115,9 @@ void loop() {
   bool isNote = keyIndex > -1;
   int8_t note = isNote ? getMIDINote(keyIndex) : -1;
 
-  if (DEBUG_PS2) {
-    if (!isKeyUp(key)) {
-      Serial.print("keyCode (keyDown): ");
-      Serial.println(keyCode);
-    }
+  if (DEBUG_PS2 && !isKeyUp(key)) {
+    Serial.print("keyCode:");
+    Serial.println(keyCode);
   }
 
   if (isKeyUp(key)) {
@@ -112,35 +125,33 @@ void loop() {
       sendNoteOff(note);
       state.heldNotes[note] = false;
     }
+
     return;
   }
 
   if (isNote && !state.heldNotes[note]) {
     sendNoteOn(note);
     state.heldNotes[note] = true;
-    return;
-  }
-
-  if (isScale(keyCode)) {
+    state.lastNote = note;
+  } else if (isScale(keyCode)) {
     setScale(keyCode);
-    return;
-  }
-
-  if (isHold(keyCode)) {
+  } else if (isHold(keyCode)) {
     state.hold = !state.hold;
-    return;
-  }
-
-  if (isOctave(keyCode)) {
+  } else if (isOctave(keyCode)) {
     setOctave(keyCode);
-    return;
-  }
-
-  if (isPanicButton(keyCode)) {
+  } else if (isRoot(keyCode)) {
+    setRoot(keyCode);
+  } else if (isPanicButton(keyCode)) {
     sendAllNotesOff();
     initHeldKeys();
-    return;
   }
+
+  if (!isNumLockOn()) {
+    keyboard.setLock(PS2_LOCK_NUM);
+    state.root = 9;
+  }
+
+  lcdPrint(keyCode);
 }
 
 int8_t getKeyIndex(uint8_t keyCode) {
@@ -190,6 +201,15 @@ void setScale(uint8_t keyCode) {
 void setOctave(uint8_t keyCode) {
   uint8_t x = state.octaveOffset + (keyCode == PS2_KEY_UP_ARROW ? 1 : -1);
   state.octaveOffset = x < 0 ? 0 : x > 5 ? 5 : x;
+}
+
+void setRoot(uint8_t keyCode) {
+  for (uint8_t i = 0; i < 12; i++) {
+    if (keyCode == ROOT_KEYS[i]) {
+      state.root = i;
+      return;
+    }
+  }
 }
 
 uint8_t getScaleLength(uint8_t scaleIndex) {
@@ -242,10 +262,10 @@ void updateRowOffsets(uint8_t scaleLength) {
 uint8_t getMIDINote(uint8_t keyCodeIndex) {
   uint8_t scaleLength = getScaleLength(state.scaleIndex);
   uint8_t pitchClassIndex = keyCodeIndex % scaleLength;
-  uint8_t pitchClass = getPitchClass(pitchClassIndex);
+  uint8_t pitch = (getPitchClass(pitchClassIndex) + state.root) % 12;
   uint8_t octave = (floor(keyCodeIndex / scaleLength) * 12) + (state.octaveOffset * 12);
 
-  return octave + pitchClass;
+  return octave + pitch;
 }
 
 uint8_t getPitchClass(uint8_t index) {
@@ -301,15 +321,41 @@ bool isScale(uint8_t keyCode) {
 }
 
 bool isHold(uint8_t keyCode) {
-  return keyCode == PS2_KEY_HOME;
+  return keyCode == PS2_KEY_HOME || keyCode == PS2_KEY_KP_ENTER;
 }
 
 bool isOctave(uint8_t keyCode) {
-  return keyCode == PS2_KEY_UP_ARROW || keyCode == PS2_KEY_DN_ARROW;
+  return keyCode == PS2_KEY_UP_ARROW ||
+         keyCode == PS2_KEY_DN_ARROW ||
+         keyCode == PS2_KEY_KP_PLUS ||
+         keyCode == PS2_KEY_KP_MINUS;
+}
+
+bool isIncrementalTranspose(uint8_t keyCode) {
+  return keyCode == PS2_KEY_L_ARROW || keyCode == PS2_KEY_R_ARROW;
+}
+
+bool isRoot(uint8_t keyCode) {
+  return keyCode == PS2_KEY_KP1 || // C
+         keyCode == PS2_KEY_KP2 || // C#
+         keyCode == PS2_KEY_KP3 || // D
+         keyCode == PS2_KEY_KP4 || // D#
+         keyCode == PS2_KEY_KP5 || // E
+         keyCode == PS2_KEY_KP6 || // F
+         keyCode == PS2_KEY_KP7 || // F#
+         keyCode == PS2_KEY_KP8 || // G
+         keyCode == PS2_KEY_KP9 || // G#
+         keyCode == PS2_KEY_NUM || // A
+         keyCode == PS2_KEY_KP_DIV || // A#
+         keyCode == PS2_KEY_KP_TIMES; // B
 }
 
 bool isPanicButton(uint8_t keyCode) {
-  return keyCode == PS2_KEY_DELETE;
+  return keyCode == PS2_KEY_DELETE || keyCode == PS2_KEY_KP_DOT;
+}
+
+bool isNumLockOn() {
+  return !!(keyboard.getLock() & PS2_LOCK_NUM);
 }
 
 void sendNoteOn(uint8_t note) {
@@ -338,5 +384,30 @@ void sendMIDI(uint8_t status, uint8_t data1, uint8_t data2) {
     Serial.write(status);
     Serial.write(data1);
     Serial.write(data2);
+  }
+}
+
+void lcdPrint(uint8_t keyCode) {
+  if (state.printMode == PRINT_MODE_LIVE) {
+    lcd.clear();
+
+    lcd.print(NOTES[state.root]);
+    lcd.setCursor(3, 0);
+    lcd.print(SCALE_NAMES[state.scaleIndex]);
+
+    lcd.setCursor(0, 1);
+    lcd.print(NOTES[state.lastNote % 12]);
+    lcd.print((uint8_t) floor(state.lastNote / 12));
+    lcd.print(" ");
+
+    lcd.print("Octave:");
+    lcd.print(state.octaveOffset);
+    lcd.print(" ");
+
+    lcd.setCursor(15, 1);
+    lcd.print(state.hold ? "H" : "");
+  } else if (state.printMode == PRINT_MODE_DEBUG) {
+    lcd.clear();
+    lcd.print(keyCode);
   }
 }
