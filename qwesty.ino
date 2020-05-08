@@ -125,7 +125,7 @@ void loop() {
       sendNoteOff(note);
       state.heldNotes[note] = false;
     }
-
+    
     return;
   }
 
@@ -150,8 +150,12 @@ void loop() {
     keyboard.setLock(PS2_LOCK_NUM);
     state.root = 9;
   }
+  
+// to prevent taxing the device, only update LCD on octave/root/scale change 
+  if (isRoot(keyCode) || isScale(keyCode) ||  isOctave(keyCode)) {
+     lcdPrint(keyCode);
+   }
 
-  lcdPrint(keyCode);
 }
 
 int8_t getKeyIndex(uint8_t keyCode) {
