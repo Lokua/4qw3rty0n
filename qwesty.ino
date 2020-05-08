@@ -2,7 +2,7 @@
 #include <PS2KeyAdvanced.h>
 #include "scales.h"
 
-#define DEBUG_PS2 1
+#define DEBUG_PS2 0
 #define NOTE_OFF 128
 #define NOTE_ON 144
 #define DEFAULT_VELOCITY 127
@@ -17,18 +17,17 @@
 LiquidCrystal lcd(12, 11, 5, 8, 9, 2);
 PS2KeyAdvanced keyboard;
 
-uint8_t lockPanic = 0;
-
 struct programState
 {
   uint8_t channel = 0;
   bool heldNotes[128] = {};
   bool hold = false;
   uint8_t scaleIndex = 0;
-  uint8_t octaveOffset = 3;
+  Scale *scale = &scales[1];
+  int8_t octaveOffset = 3;
   uint8_t root = 0;
   uint8_t rowOffsets[4] = {0, 0, 0, 0};
-  uint8_t printMode = PRINT_MODE_LIVE;
+  uint8_t printMode = PRINT_MODE_DEBUG;
   uint8_t lastNote = 0;
 
   uint8_t keys[N_KEYS][2] = {
@@ -171,9 +170,14 @@ void initHeldKeys() {
 }
 
 void setScale(uint8_t keyCode) {
-  state.scaleIndex = keyCode - PS2_KEY_F1;
-  uint8_t scaleLength = getScaleLength(state.scaleIndex);
-  updateRowOffsets(scaleLength);
+  for (uint8_t i = 0; i < sizeof(scales); i++) {
+    if (keyCode == scales[i].keyCode) {
+      state.scale = &scales[i];
+      break;
+    }
+  }
+
+  updateRowOffsets();
 
   uint8_t key = 0;
   uint8_t row = 0;
@@ -200,7 +204,7 @@ void setScale(uint8_t keyCode) {
 
 void setOctave(uint8_t keyCode) {
   uint8_t x = state.octaveOffset + (keyCode == PS2_KEY_UP_ARROW ? 1 : -1);
-  state.octaveOffset = x < 0 ? 0 : x > 5 ? 5 : x;
+  state.octaveOffset = x < -2 ? -2 : x > 8 ? 8 : x;
 }
 
 void setRoot(uint8_t keyCode) {
@@ -212,44 +216,20 @@ void setRoot(uint8_t keyCode) {
   }
 }
 
-uint8_t getScaleLength(uint8_t scaleIndex) {
-  switch (scaleIndex) {
-    case 0:
-    case 1:
-    case 2:
-    case 4:
-    case 5:
-    case 8:
-    case 9:
-    case 10:
-    case 11:
-      return 7;
-    case 3:
-    case 7:
-      return 5;
-    case 6:
-      return 6;
-  }
-}
-
-void updateRowOffsets(uint8_t scaleLength) {
-  switch (scaleLength) {
+void updateRowOffsets() {
+  switch (state.scale->size) {
     case 7:
       state.rowOffsets[0] = 0;
       state.rowOffsets[1] = 2;
       state.rowOffsets[2] = 4;
       state.rowOffsets[3] = 6;
       break;
-
-    // blues
     case 6:
       state.rowOffsets[0] = 0;
       state.rowOffsets[1] = 2;
       state.rowOffsets[2] = 4;
       state.rowOffsets[3] = 5;
       break;
-
-    // pentatonics
     case 5:
       state.rowOffsets[0] = 0;
       state.rowOffsets[1] = 2;
@@ -260,48 +240,13 @@ void updateRowOffsets(uint8_t scaleLength) {
 }
 
 uint8_t getMIDINote(uint8_t keyCodeIndex) {
-  uint8_t scaleLength = getScaleLength(state.scaleIndex);
-  uint8_t pitchClassIndex = keyCodeIndex % scaleLength;
-  uint8_t pitch = (getPitchClass(pitchClassIndex) + state.root) % 12;
-  uint8_t octave = (floor(keyCodeIndex / scaleLength) * 12) + (state.octaveOffset * 12);
+  uint8_t pitchClassIndex = keyCodeIndex % state.scale->size;
+  uint8_t pitch = (state.scale->scale[pitchClassIndex] + state.root) % 12;
+  uint8_t octave = (floor(keyCodeIndex / state.scale->size) * 12) + (state.octaveOffset * 12);
 
+  lcdDebug(octave + pitch);
   return octave + pitch;
 }
-
-uint8_t getPitchClass(uint8_t index) {
-  switch (state.scaleIndex) {
-    // F1-F4
-    case 0:
-      return MAJOR[index];
-    case 1:
-      return HARMONIC_MAJOR[index];
-    case 2:
-      return MIXOLYDIAN[index];
-    case 3:
-      return MAJOR_PENTATONIC[index];
-
-    // F5-F8
-    case 4:
-      return MINOR[index];
-    case 5:
-      return HARMONIC_MINOR[index];
-    case 6:
-      return BLUES_MINOR[index];
-    case 7:
-      return MINOR_PENTATONIC[index];
-
-    // F9-F12
-    case 8:
-      return DORIAN[index];
-    case 9:
-      return PHRYGIAN[index];
-    case 10:
-      return PHRYGIAN_DOMINANT[index];
-    case 11:
-      return LYDIAN_DOMINANT[index];
-  }
-}
-
 
 bool isKeyUp(uint16_t key) {
   uint16_t status_ = key >> 8;
@@ -317,7 +262,11 @@ bool isNumericKey(uint8_t keyCode) {
 }
 
 bool isScale(uint8_t keyCode) {
-  return keyCode >= PS2_KEY_F1 && keyCode <= PS2_KEY_F12;
+  return (keyCode >= PS2_KEY_F1 && keyCode <= PS2_KEY_F12) ||
+         keyCode == PS2_KEY_ESC ||
+         keyCode == PS2_KEY_PRTSCR ||
+         keyCode == PS2_KEY_SCROLL ||
+         keyCode == PS2_KEY_PAUSE;
 }
 
 bool isHold(uint8_t keyCode) {
@@ -393,7 +342,7 @@ void lcdPrint(uint8_t keyCode) {
 
     lcd.print(NOTES[state.root]);
     lcd.setCursor(3, 0);
-    lcd.print(SCALE_NAMES[state.scaleIndex]);
+    lcd.print(state.scale->name);
 
     lcd.setCursor(0, 1);
     lcd.print(NOTES[state.lastNote % 12]);
@@ -406,8 +355,18 @@ void lcdPrint(uint8_t keyCode) {
 
     lcd.setCursor(15, 1);
     lcd.print(state.hold ? "H" : "");
-  } else if (state.printMode == PRINT_MODE_DEBUG) {
+  }
+}
+
+void lcdDebug(char *message) {
+  if (state.printMode == PRINT_MODE_DEBUG) {
     lcd.clear();
-    lcd.print(keyCode);
+    lcd.print(message);
+  }
+}
+void lcdDebug(uint8_t message) {
+  if (state.printMode == PRINT_MODE_DEBUG) {
+    lcd.clear();
+    lcd.print(message);
   }
 }
