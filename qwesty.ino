@@ -1,8 +1,15 @@
+#define USE_I2C 1
+#define DEBUG_PS2 0
+
+#if (USE_I2C)
+#include <DFRobot_LCD.h>
+#else
 #include <LiquidCrystal.h>
+#endif
+
 #include <PS2KeyAdvanced.h>
 #include "scales.h"
 
-#define DEBUG_PS2 0
 #define NOTE_OFF 128
 #define NOTE_ON 144
 #define DEFAULT_VELOCITY 127
@@ -14,7 +21,12 @@
 #define PRINT_MODE_MIDI 2
 #define PRINT_MODE_HELP 3
 
+#if (USE_I2C)
+DFRobot_LCD lcd(16, 2);
+#else
 LiquidCrystal lcd(12, 11, 5, 8, 9, 2);
+#endif
+
 PS2KeyAdvanced keyboard;
 
 struct programState
@@ -97,8 +109,15 @@ void setup() {
   keyboard.setNoRepeat(1);
   keyboard.setLock(PS2_LOCK_NUM);
 
+#if (USE_I2C)
+  lcd.init();
+  lcd.setRGB(50, 50, 50);
+  lcd.setCursor(0, 1);
+#else
   lcd.begin(16, 2);
-  lcd.print("Hello, world");
+#endif
+
+  lcd.print("S-rOn v0.0.1");
 
   setScale(PS2_KEY_F1);
 }
@@ -114,10 +133,12 @@ void loop() {
   bool isNote = keyIndex > -1;
   int8_t note = isNote ? getMIDINote(keyIndex) : -1;
 
-  if (DEBUG_PS2 && !isKeyUp(key)) {
+#if (DEBUG_PS2)
+  if (!isKeyUp(key)) {
     Serial.print("keyCode:");
     Serial.println(keyCode);
   }
+#endif
 
   if (isKeyUp(key)) {
     if (isNote && !state.hold) {
@@ -153,7 +174,9 @@ void loop() {
     state.root = 9;
   }
 
-  lcdPrint(keyCode);
+  if (isRoot(keyCode) || isScale(keyCode) ||  isOctave(keyCode)) {
+    lcdPrint(keyCode);
+  }
 }
 
 int8_t getKeyIndex(uint8_t keyCode) {
@@ -342,17 +365,22 @@ void lcdPrint(uint8_t keyCode) {
   if (state.printMode == PRINT_MODE_LIVE) {
     lcd.clear();
 
-    lcd.print(NOTES[state.root]);
-    lcd.setCursor(3, 0);
+    lcd.setCursor(0, 0);
     lcd.print(state.scale->name);
 
     lcd.setCursor(0, 1);
-    lcd.print(NOTES[state.lastNote % 12]);
-    lcd.print((uint8_t) floor(state.lastNote / 12));
+    lcd.print("R=");
+    lcd.print(NOTES[state.root]);
+
+    lcd.setCursor(5, 1);
+    lcd.print("O=");
+    lcd.print(state.octaveOffset);
     lcd.print(" ");
 
-    lcd.print("Octave:");
-    lcd.print(state.octaveOffset);
+    lcd.setCursor(9, 1);
+    lcd.print("N=");
+    lcd.print(NOTES[state.lastNote % 12]);
+    lcd.print((uint8_t) floor(state.lastNote / 12));
     lcd.print(" ");
 
     lcd.setCursor(15, 1);
