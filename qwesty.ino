@@ -1,8 +1,8 @@
-#include <LiquidCrystal.h>
+// #include <LiquidCrystal.h>
 #include <PS2KeyAdvanced.h>
 #include "scales.h"
 
-#define DEBUG_PS2 1
+#define DEBUG_PS2 0
 #define NOTE_OFF 128
 #define NOTE_ON 144
 #define DEFAULT_VELOCITY 127
@@ -14,7 +14,7 @@
 #define PRINT_MODE_MIDI 2
 #define PRINT_MODE_HELP 3
 
-LiquidCrystal lcd(12, 11, 5, 8, 9, 2);
+// LiquidCrystal lcd(12, 11, 5, 8, 9, 2);
 PS2KeyAdvanced keyboard;
 
 uint8_t lockPanic = 0;
@@ -98,8 +98,8 @@ void setup() {
   keyboard.setNoRepeat(1);
   keyboard.setLock(PS2_LOCK_NUM);
 
-  lcd.begin(16, 2);
-  lcd.print("Hello, world");
+  // lcd.begin(16, 2);
+  // lcd.print("Hello, world");
 
   setScale(PS2_KEY_F1);
 }
@@ -387,27 +387,27 @@ void sendMIDI(uint8_t status, uint8_t data1, uint8_t data2) {
   }
 }
 
-void lcdPrint(uint8_t keyCode) {
-  if (state.printMode == PRINT_MODE_LIVE) {
-    lcd.clear();
+// void lcdPrint(uint8_t keyCode) {
+//   if (state.printMode == PRINT_MODE_LIVE) {
+//     lcd.clear();
 
-    lcd.print(NOTES[state.root]);
-    lcd.setCursor(3, 0);
-    lcd.print(SCALE_NAMES[state.scaleIndex]);
+//     lcd.print(NOTES[state.root]);
+//     lcd.setCursor(3, 0);
+//     lcd.print(SCALE_NAMES[state.scaleIndex]);
 
-    lcd.setCursor(0, 1);
-    lcd.print(NOTES[state.lastNote % 12]);
-    lcd.print((uint8_t) floor(state.lastNote / 12));
-    lcd.print(" ");
+//     lcd.setCursor(0, 1);
+//     lcd.print(NOTES[state.lastNote % 12]);
+//     lcd.print((uint8_t) floor(state.lastNote / 12));
+//     lcd.print(" ");
 
-    lcd.print("Octave:");
-    lcd.print(state.octaveOffset);
-    lcd.print(" ");
+//     lcd.print("Octave:");
+//     lcd.print(state.octaveOffset);
+//     lcd.print(" ");
 
-    lcd.setCursor(15, 1);
-    lcd.print(state.hold ? "H" : "");
-  } else if (state.printMode == PRINT_MODE_DEBUG) {
-    lcd.clear();
-    lcd.print(keyCode);
-  }
-}
+//     lcd.setCursor(15, 1);
+//     lcd.print(state.hold ? "H" : "");
+//   } else if (state.printMode == PRINT_MODE_DEBUG) {
+//     lcd.clear();
+//     lcd.print(keyCode);
+//   }
+// }
