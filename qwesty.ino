@@ -27,7 +27,7 @@ struct programState
   int8_t octaveOffset = 3;
   uint8_t root = 0;
   uint8_t rowOffsets[4] = {0, 0, 0, 0};
-  uint8_t printMode = PRINT_MODE_DEBUG;
+  uint8_t printMode = PRINT_MODE_LIVE;
   uint8_t lastNote = 0;
 
   uint8_t keys[N_KEYS][2] = {
@@ -246,8 +246,6 @@ uint8_t getMIDINote(uint8_t keyCodeIndex) {
   uint8_t pitchIndex = keyCodeIndex % state.scale->size;
   uint8_t pitch = (state.scale->scale[pitchIndex] % 12) + state.root;
   uint8_t octave = (floor(keyCodeIndex / state.scale->size) * 12) + (state.octaveOffset * 12);
-
-  lcdDebug(octave, octave + pitch);
 
   return octave + pitch;
 }
