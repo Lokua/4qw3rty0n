@@ -128,7 +128,10 @@ void loop() {
     return;
   }
 
-  if (isNote && !state.heldNotes[note]) {
+  if (isNote) {
+    if (state.heldNotes[note]) {
+      sendNoteOff(note);
+    }
     sendNoteOn(note);
     state.heldNotes[note] = true;
     state.lastNote = note;
@@ -240,11 +243,12 @@ void updateRowOffsets() {
 }
 
 uint8_t getMIDINote(uint8_t keyCodeIndex) {
-  uint8_t pitchClassIndex = keyCodeIndex % state.scale->size;
-  uint8_t pitch = (state.scale->scale[pitchClassIndex] + state.root) % 12;
+  uint8_t pitchIndex = keyCodeIndex % state.scale->size;
+  uint8_t pitch = (state.scale->scale[pitchIndex] % 12) + state.root;
   uint8_t octave = (floor(keyCodeIndex / state.scale->size) * 12) + (state.octaveOffset * 12);
 
-  lcdDebug(octave + pitch);
+  lcdDebug(octave, octave + pitch);
+
   return octave + pitch;
 }
 
@@ -368,5 +372,13 @@ void lcdDebug(uint8_t message) {
   if (state.printMode == PRINT_MODE_DEBUG) {
     lcd.clear();
     lcd.print(message);
+  }
+}
+void lcdDebug(uint8_t a, uint8_t b) {
+  if (state.printMode == PRINT_MODE_DEBUG) {
+    lcd.clear();
+    lcd.print(a);
+    lcd.print(" ");
+    lcd.print(b);
   }
 }

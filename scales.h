@@ -77,37 +77,6 @@ Scale scales[] = {
   Scale("Japanese", JAPANESE, 5),
 };
 
-extern const char * SCALE_NAMES[28] = {
-  "Chromatic",
-  "Major",
-  "Harmonic Major",
-  "Major Pentatonic",
-  "Minor Pentatonic",
-  "Minor",
-  "Harmonic Minor",
-  "Melodic Minor",
-  "Mixolydian",
-  "Mixolydian b6",
-  "Lydian",
-  "Lydian Dominant",
-  "Phrygian",
-  "Phrygian Dominant",
-  "Dorian",
-  "Locrian",
-  "Blues Major",
-  "Blues Scale",
-  "Blues Heptatonic",
-  "Blues KC",
-  "Whole Tone",
-  "Altered",
-  "Octatonic",
-  "Diminished",
-  "Balinese",
-  "Chinese",
-  "Egyptian",
-  "Japanese"
-};
-
 extern const uint8_t ROOT_KEYS[12] = {
   PS2_KEY_KP1,
   PS2_KEY_KP2,
