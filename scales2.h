@@ -1,22 +1,3 @@
-class Scale {
-  public:
-    uint8_t size;
-    uint8_t *scale;
-    char *name;
-    uint8_t keyCode;
-    Scale(char * name_, uint8_t * scale_, uint8_t size_, uint8_t keyCode_) {
-      name = name_;
-      scale = scale_;
-      size = size_;
-      keyCode = keyCode_;
-    }
-    Scale(char * name_, uint8_t * scale_, uint8_t size_) {
-      name = name_;
-      scale = scale_;
-      size = size_;
-    }
-};
-
 extern const uint8_t CHROMATIC[12] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
 extern const uint8_t MAJOR[7] = {0, 2, 4, 5, 7, 9, 11};
 extern const uint8_t HARMONIC_MAJOR[7] = {0, 2, 4, 5, 7, 8, 11};
@@ -46,35 +27,35 @@ extern const uint8_t CHINESE[5] = {0, 4, 6, 7, 11};
 extern const uint8_t EGYPTIAN[5] = {0, 2, 5, 7, 10};
 extern const uint8_t JAPANESE[5] = {0, 1, 5, 7, 8};
 
-Scale scales[] = {
-  Scale("Chromatic", CHROMATIC, 12, PS2_KEY_ESC),
-  Scale("Major", MAJOR, 7, PS2_KEY_F1),
-  Scale("Harmonic Major", HARMONIC_MAJOR, 7, PS2_KEY_F2),
-  Scale("Major Pentatonic", MAJOR_PENTATONIC, 5, PS2_KEY_F3),
-  Scale("Minor Pentatonic", MINOR_PENTATONIC, 5, PS2_KEY_F4),
-  Scale("Minor", MINOR, 7, PS2_KEY_F5),
-  Scale("Harmonic Minor", HARMONIC_MINOR, 7, PS2_KEY_F6),
-  Scale("Melodic Minor", MELODIC_MINOR, 7, PS2_KEY_F7),
-  Scale("Mixolydian", MIXOLYDIAN, 7, PS2_KEY_F8),
-  Scale("Mixolydian b6", MIXOLYDIAN_B6, 7, PS2_KEY_F9),
-  Scale("Lydian", LYDIAN, 7, PS2_KEY_F10),
-  Scale("Lydian Dominant", LYDIAN_DOMINANT, 7, PS2_KEY_F11),
-  Scale("Phrygian", PHRYGIAN, 7, PS2_KEY_F12),
-  Scale("Phrygian Dominant", PHRYGIAN_DOMINANT, 7, PS2_KEY_PRTSCR),
-  Scale("Dorian", DORIAN, 7, PS2_KEY_SCROLL),
-  Scale("Locrian", LOCRIAN, 7, PS2_KEY_PAUSE),
-  Scale("Blues Major", BLUES_MAJOR, 6),
-  Scale("Blues Scale", BLUES_SCALE, 6),
-  Scale("Blues Heptatonic", BLUES_HEPTATONIC, 7),
-  Scale("Blues KC", BLUES_KC, 5),
-  Scale("Whole Tone", WHOLE_TONE, 6),
-  Scale("Altered", ALTERED, 7),
-  Scale("Octatonic", OCTATONIC, 8),
-  Scale("Diminished", DIMINISHED, 8),
-  Scale("Balinese", BALINESE, 5),
-  Scale("Chinese", CHINESE, 5),
-  Scale("Egyptian", EGYPTIAN, 5),
-  Scale("Japanese", JAPANESE, 5),
+extern const char * SCALE_NAMES[28] = {
+  "Chromatic",
+  "Major",
+  "Harmonic Major",
+  "Major Pentatonic",
+  "Minor Pentatonic",
+  "Minor",
+  "Harmonic Minor",
+  "Melodic Minor",
+  "Mixolydian",
+  "Mixolydian b6",
+  "Lydian",
+  "Lydian Dominant",
+  "Phrygian",
+  "Phrygian Dominant",
+  "Dorian",
+  "Locrian",
+  "Blues Major",
+  "Blues Scale",
+  "Blues Heptatonic",
+  "Blues KC",
+  "Whole Tone",
+  "Altered",
+  "Octatonic",
+  "Diminished",
+  "Balinese",
+  "Chinese",
+  "Egyptian",
+  "Japanese"
 };
 
 extern const uint8_t ROOT_KEYS[12] = {
