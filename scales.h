@@ -25,9 +25,6 @@ extern const uint8_t MIXOLYDIAN_B6[7] = {0, 2, 4, 5, 7, 8, 10};
 extern const uint8_t LYDIAN[7] = {0, 2, 4, 6, 7, 9, 11};
 extern const uint8_t LYDIAN_DOMINANT[7] = {0, 2, 4, 6, 7, 9, 10};
 extern const uint8_t PHRYGIAN[7] = {0, 1, 3, 5, 7, 8, 10};
-extern const uint8_t PHRYGIAN_DOMINANT[7] = {0, 1, 4, 5, 7, 8, 10};
-extern const uint8_t DORIAN[7] = {0, 2, 3, 5, 7, 9, 10};
-extern const uint8_t LOCRIAN[7] = {0, 1, 3, 5, 6, 8, 10};
 extern const uint8_t FOLK[8] = {0, 1, 3, 4, 5, 7, 8, 10};
 extern const uint8_t BLUES_MAJOR[6] = {0, 2, 3, 4, 7, 9};
 extern const uint8_t BLUES_SCALE[6] = {0, 3, 5, 6, 7, 10};
@@ -56,9 +53,6 @@ Scale scales[] = {
   Scale("Lydian", LYDIAN, 7, PS2_KEY_F10),
   Scale("Lydian Dominant", LYDIAN_DOMINANT, 7, PS2_KEY_F11),
   Scale("Phrygian", PHRYGIAN, 7, PS2_KEY_F12),
-  Scale("Phrygian Dominant", PHRYGIAN_DOMINANT, 7, PS2_KEY_PRTSCR),
-  Scale("Dorian", DORIAN, 7, PS2_KEY_SCROLL),
-  Scale("Locrian", LOCRIAN, 7, PS2_KEY_PAUSE),
 
   // "shift" scales:
   Scale("Folk", FOLK, 8, PS2_KEY_ESC),

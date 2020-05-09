@@ -1,4 +1,4 @@
-#define USE_I2C 0
+#define USE_I2C 1
 #define DEBUG_PS2 0
 
 #if (USE_I2C)
@@ -238,9 +238,10 @@ int8_t findHeldNoteIndexOfKeyCode(uint8_t keyCode) {
 }
 
 void setScale(uint8_t keyCode) {
-  uint8_t i = state.shift ? 16 : 0;
+  uint8_t nScales = sizeof(scales) / 2;
+  uint8_t i = state.shift ? nScales : 0;
 
-  for (i; i < sizeof(scales) / 2; i++) {
+  for (i; i < nScales; i++) {
     if (keyCode == scales[i].keyCode) {
       state.scale = &scales[i];
       break;
@@ -283,11 +284,7 @@ bool isKeyUp(uint16_t key) {
 }
 
 bool isScale(uint8_t keyCode) {
-  return (keyCode >= PS2_KEY_F1 && keyCode <= PS2_KEY_F12) ||
-         keyCode == PS2_KEY_ESC ||
-         keyCode == PS2_KEY_PRTSCR ||
-         keyCode == PS2_KEY_SCROLL ||
-         keyCode == PS2_KEY_PAUSE;
+  return (keyCode >= PS2_KEY_F1 && keyCode <= PS2_KEY_F12) || keyCode == PS2_KEY_ESC;
 }
 
 bool isHold(uint8_t keyCode) {
