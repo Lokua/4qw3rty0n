@@ -1,5 +1,5 @@
-#define USE_I2C 0
-#define DEBUG_PS2 1
+#define USE_I2C 1
+#define DEBUG_PS2 0
 
 #if (USE_I2C)
 #include <DFRobot_LCD.h>
