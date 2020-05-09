@@ -1,5 +1,5 @@
-#define USE_I2C 1
-#define DEBUG_PS2 0
+#define USE_I2C 0
+#define DEBUG_PS2 1
 
 #if (USE_I2C)
 #include <DFRobot_LCD.h>
@@ -41,6 +41,7 @@ struct programState
   uint8_t lastNote = 0;
   bool shift = false;
   uint8_t printMode = PRINT_MODE_LIVE;
+  char lcdLine0[16];
 
   uint8_t keys[N_KEYS][2] = {
     // row 1
@@ -112,14 +113,20 @@ void setup() {
 #if (USE_I2C)
   lcd.init();
   lcd.setRGB(50, 50, 50);
-  lcd.setCursor(0, 1);
 #else
   lcd.begin(16, 2);
 #endif
 
   lcd.print("S-rOn v0.0.1");
-
-  setScale(PS2_KEY_F1);
+  delay(2000);
+  lcd.clear();
+  lcd.setCursor(0, 1);
+  lcd.print("R=   O=  N=     ");
+  lcdUpdateScale();
+  lcdUpdateOctave();
+  lcdUpdateRoot();
+  lcdUpdateNote();
+  lcdUpdateHold();
 }
 
 void loop() {
@@ -155,14 +162,19 @@ void loop() {
     sendNoteOn(note);
     state.heldNotes[note] = true;
     state.lastNote = note;
+    lcdUpdateNote();
   } else if (isScale(keyCode)) {
     setScale(keyCode);
+    lcdUpdateScale();
   } else if (isHold(keyCode)) {
     state.hold = !state.hold;
+    lcdUpdateHold();
   } else if (isOctave(keyCode)) {
     setOctave(keyCode);
+    lcdUpdateOctave();
   } else if (isRoot(keyCode)) {
     setRoot(keyCode);
+    lcdUpdateRoot();
   } else if (isPanicButton(keyCode)) {
     sendAllNotesOff();
     initHeldKeys();
@@ -174,11 +186,6 @@ void loop() {
     keyboard.setLock(PS2_LOCK_NUM);
     state.root = 9;
   }
-
-  if (isRoot(keyCode) || isScale(keyCode) ||  isOctave(keyCode)) {
-    lcdPrint(keyCode);
-  }
-  //  lcdPrint(keyCode);
 }
 
 int8_t getKeyIndex(uint8_t keyCode) {
@@ -328,31 +335,49 @@ void sendMIDI(uint8_t status, uint8_t data1, uint8_t data2) {
   }
 }
 
-void lcdPrint(uint8_t keyCode) {
-  if (state.printMode == PRINT_MODE_LIVE) {
-    lcd.clear();
+void lcdUpdateScale() {
+  uint8_t scaleNameLength = strlen(state.scale->name);
 
-    lcd.setCursor(0, 0);
-    lcd.print(state.scale->name);
-
-    lcd.setCursor(0, 1);
-    lcd.print("R=");
-    lcd.print(NOTES[state.root]);
-
-    lcd.setCursor(5, 1);
-    lcd.print("O=");
-    lcd.print(state.octaveOffset);
-    lcd.print(" ");
-
-    lcd.setCursor(9, 1);
-    lcd.print("N=");
-    lcd.print(NOTES[state.lastNote % 12]);
-    lcd.print((uint8_t) floor(state.lastNote / 12));
-    lcd.print(" ");
-
-    lcd.setCursor(15, 1);
-    lcd.print(state.hold ? "H" : "");
+  for (uint8_t i = 0; i < 16; i++) {
+    state.lcdLine0[i] = i < scaleNameLength ? state.scale->name[i] : ' ';
   }
+
+  lcd.setCursor(0, 0);
+  lcd.print(state.lcdLine0);
+}
+
+void lcdUpdateOctave() {
+  lcd.setCursor(7, 1);
+  lcd.print(state.octaveOffset);
+}
+
+void lcdUpdateRoot() {
+  char * note = NOTES[state.root];
+
+  lcd.setCursor(2, 1);
+  lcd.print(note);
+  
+  if (strlen(note) == 1) {
+    lcd.print(" ");
+  }
+}
+
+void lcdUpdateNote() {
+  char * note = NOTES[state.lastNote % 12];
+  
+  lcd.setCursor(11, 1);
+  lcd.print(note);
+  lcd.print((uint8_t) floor(state.lastNote / 12));
+
+  if (strlen(note) == 1) {
+    lcd.print(" ");
+  }
+}
+
+void lcdUpdateHold() {
+  lcd.setCursor(15, 1);
+  Serial.println(state.hold);
+  lcd.print(state.hold ? "H" : " ");
 }
 
 void lcdDebug(char *message) {
