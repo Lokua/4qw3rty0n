@@ -1,4 +1,4 @@
-#define USE_I2C 1
+#define USE_I2C 0
 #define DEBUG_PS2 0
 
 #if (USE_I2C)
@@ -32,7 +32,7 @@ PS2KeyAdvanced keyboard;
 struct programState
 {
   uint8_t channel = 0;
-  bool heldNotes[128] = {};
+  uint8_t heldNotes[128];
   bool hold = false;
   uint8_t scaleIndex = 0;
   Scale *scale = &scales[1];
@@ -42,6 +42,7 @@ struct programState
   bool shift = false;
   uint8_t printMode = PRINT_MODE_LIVE;
   char lcdLine0[16];
+  uint8_t pendingHeldNotesCount = 0;
 
   uint8_t keys[N_KEYS][2] = {
     // row 1
@@ -150,8 +151,18 @@ void loop() {
     if (isShift(keyCode)) {
       state.shift = false;
     } else if (isNote && !state.hold) {
-      sendNoteOff(note);
-      state.heldNotes[note] = false;
+      if (state.pendingHeldNotesCount) {
+        int8_t heldNoteIndex = findHeldNoteIndexOfKeyCode(keyCode);
+        
+        if (heldNoteIndex > -1) {
+          sendNoteOff(heldNoteIndex);
+          state.heldNotes[heldNoteIndex] = 0;
+          state.pendingHeldNotesCount--;
+        }
+      } else {
+        sendNoteOff(note);
+        state.heldNotes[note] = 0;
+      }
     }
 
     return;
@@ -159,24 +170,28 @@ void loop() {
 
   if (isNote && !state.heldNotes[note]) {
     sendNoteOn(note);
-    state.heldNotes[note] = true;
+    state.heldNotes[note] = keyCode;
     state.lastNote = note;
     lcdUpdateNote();
+    
   } else if (isScale(keyCode)) {
     setScale(keyCode);
+    updatePendingHeldNotesCount();
     lcdUpdateScale();
   } else if (isHold(keyCode)) {
     state.hold = !state.hold;
     lcdUpdateHold();
   } else if (isOctave(keyCode)) {
     setOctave(keyCode);
+    updatePendingHeldNotesCount();
     lcdUpdateRootAndOctave();
   } else if (isRoot(keyCode)) {
     setRoot(keyCode);
+    updatePendingHeldNotesCount();
     lcdUpdateRootAndOctave();
   } else if (isPanicButton(keyCode)) {
     sendAllNotesOff();
-    initHeldKeys();
+    initHeldNotes();
   } else if (isShift(keyCode)) {
     state.shift = true;
   }
@@ -198,10 +213,28 @@ int8_t getKeyIndex(uint8_t keyCode) {
   return -1;
 }
 
-void initHeldKeys() {
+void initHeldNotes() {
   for (uint8_t i = 0; i < 128; i++) {
-    state.heldNotes[i] = false;
+    state.heldNotes[i] = 0;
   }
+}
+
+void updatePendingHeldNotesCount() {
+  for (uint8_t i = 0; i < 128; i++) {
+    if (state.heldNotes[i]) {
+      state.pendingHeldNotesCount++;
+    }
+  }
+}
+
+int8_t findHeldNoteIndexOfKeyCode(uint8_t keyCode) {
+  for (uint8_t i = 0; i < 128; i++) {
+    if (state.heldNotes[i] == keyCode) {
+      return i;
+    }
+  }
+
+  return -1;
 }
 
 void setScale(uint8_t keyCode) {
@@ -240,7 +273,7 @@ uint8_t getMIDINote(uint8_t keyCodeIndex) {
   uint8_t pitch = (state.scale->scale[pitchIndex] % 12) + state.root;
   int8_t octave = ((keyCodeIndex / state.scale->size) * 12) + ((state.octave + 2) * 12);
   uint8_t note = octave + pitch;
-  
+
   return note > 127 ? 127 : note;
 }
 
