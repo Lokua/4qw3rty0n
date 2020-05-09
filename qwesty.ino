@@ -1,4 +1,4 @@
-#define USE_I2C 1
+#define USE_I2C 0
 #define DEBUG_PS2 0
 
 #if (USE_I2C)
@@ -122,7 +122,6 @@ void setup() {
   delay(2000);
   lcd.clear();
   lcd.setCursor(0, 1);
-  lcd.print("R=    N=       ");
   lcdUpdateScale();
   lcdUpdateRootAndOctave();
   lcdUpdateNote();
@@ -373,7 +372,7 @@ void lcdUpdateRootAndOctave() {
   char * note = NOTES[state.root];
   note = state.octave < 0 ? strlwr(note) : strupr(note);
 
-  lcd.setCursor(2, 1);
+  lcd.setCursor(0, 1);
   lcd.print(note);
 
   if (strlen(note) == 1) {
@@ -388,7 +387,7 @@ void lcdUpdateNote() {
   int8_t octave = (state.lastNote / 12) - 2;
   note = octave < 0 ? strlwr(note) : strupr(note);
 
-  lcd.setCursor(8, 1);
+  lcd.setCursor(6, 1);
   lcd.print(note);
 
   if (strlen(note) == 1) {
