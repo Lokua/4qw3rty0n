@@ -1,5 +1,5 @@
-#define USE_I2C 0
-#define DEBUG_PS2 1
+#define USE_I2C 1
+#define DEBUG_PS2 0
 
 #if (USE_I2C)
 #include <DFRobot_LCD.h>
@@ -36,7 +36,7 @@ struct programState
   bool hold = false;
   uint8_t scaleIndex = 0;
   Scale *scale = &scales[1];
-  int8_t octaveOffset = 3;
+  int8_t octave = 3;
   uint8_t root = 0;
   uint8_t lastNote = 0;
   bool shift = false;
@@ -221,8 +221,8 @@ void setScale(uint8_t keyCode) {
 }
 
 void setOctave(uint8_t keyCode) {
-  int8_t x = state.octaveOffset + (keyCode == PS2_KEY_UP_ARROW || keyCode == PS2_KEY_KP_PLUS ? 1 : -1);
-  state.octaveOffset = x < -2 ? -2 : x > 8 ? 8 : x;
+  int8_t x = state.octave + (keyCode == PS2_KEY_UP_ARROW || keyCode == PS2_KEY_KP_PLUS ? 1 : -1);
+  state.octave = x < -2 ? -2 : x > 8 ? 8 : x;
 }
 
 void setRoot(uint8_t keyCode) {
@@ -237,7 +237,7 @@ void setRoot(uint8_t keyCode) {
 uint8_t getMIDINote(uint8_t keyCodeIndex) {
   uint8_t pitchIndex = keyCodeIndex % state.scale->size;
   uint8_t pitch = (state.scale->scale[pitchIndex] % 12) + state.root;
-  int8_t octave = ((keyCodeIndex / state.scale->size) * 12) + ((state.octaveOffset + 2) * 12);
+  int8_t octave = ((keyCodeIndex / state.scale->size) * 12) + ((state.octave + 2) * 12);
   uint8_t note = octave + pitch;
   
   return note > 127 ? 127 : note;
@@ -340,7 +340,7 @@ void lcdUpdateScale() {
 
 void lcdUpdateRootAndOctave() {
   char * note = NOTES[state.root];
-  note = state.octaveOffset < 0 ? strlwr(note) : strupr(note);
+  note = state.octave < 0 ? strlwr(note) : strupr(note);
 
   lcd.setCursor(2, 1);
   lcd.print(note);
@@ -349,7 +349,7 @@ void lcdUpdateRootAndOctave() {
     lcd.print("-");
   }
 
-  lcd.print(abs(state.octaveOffset));
+  lcd.print(abs(state.octave));
 }
 
 void lcdUpdateNote() {
