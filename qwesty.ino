@@ -1,4 +1,4 @@
-#define USE_I2C 0
+#define USE_I2C 1
 #define DEBUG_PS2 0
 
 #if (USE_I2C)
@@ -43,6 +43,7 @@ struct programState
   uint8_t printMode = PRINT_MODE_LIVE;
   char lcdLine0[16];
   uint8_t pendingHeldNotesCount = 0;
+  bool displayOn = false;
 
   uint8_t keys[N_KEYS][2] = {
     // row 1
@@ -128,9 +129,34 @@ void setup() {
   lcdUpdateHold();
 }
 
+const long dimDisplayAtInterval = 5000;
+unsigned long lastEventTime = 0;
+
 void loop() {
+  unsigned long now = millis();
+
   if (!keyboard.available()) {
+    if (state.displayOn && now - lastEventTime >= dimDisplayAtInterval) {
+      lcd.noDisplay();
+#if (USE_I2C)
+      //      lcd.setRGB(0, 0, 0);
+      lcd.setBacklight(0);
+#endif
+      state.displayOn = false;
+    }
+
     return;
+  }
+
+  lastEventTime = now;
+
+  if (!state.displayOn) {
+    lcd.display();
+#if (USE_I2C)
+    //    lcd.setRGB(50, 50, 50);
+    lcd.setBacklight(1);
+#endif
+    state.displayOn = true;
   }
 
   uint16_t key = keyboard.read();
@@ -152,7 +178,7 @@ void loop() {
     } else if (isNote && !state.hold) {
       if (state.pendingHeldNotesCount) {
         int8_t heldNoteIndex = findHeldNoteIndexOfKeyCode(keyCode);
-        
+
         if (heldNoteIndex > -1) {
           sendNoteOff(heldNoteIndex);
           state.heldNotes[heldNoteIndex] = 0;
@@ -172,7 +198,7 @@ void loop() {
     state.heldNotes[note] = keyCode;
     state.lastNote = note;
     lcdUpdateNote();
-    
+
   } else if (isScale(keyCode)) {
     setScale(keyCode);
     updatePendingHeldNotesCount();
@@ -237,10 +263,11 @@ int8_t findHeldNoteIndexOfKeyCode(uint8_t keyCode) {
 }
 
 void setScale(uint8_t keyCode) {
-  uint8_t nScales = sizeof(scales) / 2;
+  uint8_t nScales = 13;
   uint8_t i = state.shift ? nScales : 0;
+  uint8_t l = state.shift ? nScales * 2 : nScales;
 
-  for (i; i < nScales; i++) {
+  for (i; i < l; i++) {
     if (keyCode == scales[i].keyCode) {
       state.scale = &scales[i];
       break;
