@@ -33,6 +33,7 @@ extern const uint8_t PHRYGIAN[7] = {0, 1, 3, 5, 7, 8, 10};
 extern const uint8_t PHRYGIAN_DOMINANT[7] = {0, 1, 4, 5, 7, 8, 10};
 extern const uint8_t DORIAN[7] = {0, 2, 3, 5, 7, 9, 10};
 extern const uint8_t LOCRIAN[7] = {0, 1, 3, 5, 6, 8, 10};
+extern const uint8_t FOLK[8] = {0, 1, 3, 4, 5, 7, 8, 10};
 extern const uint8_t BLUES_MAJOR[6] = {0, 2, 3, 4, 7, 9};
 extern const uint8_t BLUES_SCALE[6] = {0, 3, 5, 6, 7, 10};
 extern const uint8_t BLUES_HEPTATONIC[7] = {0, 2, 3, 5, 6, 7, 10};
@@ -63,18 +64,21 @@ Scale scales[] = {
   Scale("Phrygian Dominant", PHRYGIAN_DOMINANT, 7, PS2_KEY_PRTSCR),
   Scale("Dorian", DORIAN, 7, PS2_KEY_SCROLL),
   Scale("Locrian", LOCRIAN, 7, PS2_KEY_PAUSE),
-  Scale("Blues Major", BLUES_MAJOR, 6),
-  Scale("Blues Scale", BLUES_SCALE, 6),
-  Scale("Blues Heptatonic", BLUES_HEPTATONIC, 7),
-  Scale("Blues KC", BLUES_KC, 5),
-  Scale("Whole Tone", WHOLE_TONE, 6),
-  Scale("Altered", ALTERED, 7),
-  Scale("Octatonic", OCTATONIC, 8),
-  Scale("Diminished", DIMINISHED, 8),
-  Scale("Balinese", BALINESE, 5),
-  Scale("Chinese", CHINESE, 5),
-  Scale("Egyptian", EGYPTIAN, 5),
-  Scale("Japanese", JAPANESE, 5),
+
+  // "shift" scales:
+  Scale("Folk", FOLK, 8, PS2_KEY_ESC),
+  Scale("Blues Major", BLUES_MAJOR, 6, PS2_KEY_F1),
+  Scale("Blues Scale", BLUES_SCALE, 6, PS2_KEY_F2),
+  Scale("Blues Heptatonic", BLUES_HEPTATONIC, 7, PS2_KEY_F3),
+  Scale("Blues KC", BLUES_KC, 5, PS2_KEY_F4),
+  Scale("Whole Tone", WHOLE_TONE, 6, PS2_KEY_F5),
+  Scale("Altered", ALTERED, 7, PS2_KEY_F6),
+  Scale("Octatonic", OCTATONIC, 8, PS2_KEY_F7),
+  Scale("Diminished", DIMINISHED, 8, PS2_KEY_F8),
+  Scale("Balinese", BALINESE, 5, PS2_KEY_F9),
+  Scale("Chinese", CHINESE, 5, PS2_KEY_F10),
+  Scale("Egyptian", EGYPTIAN, 5, PS2_KEY_F11),
+  Scale("Japanese", JAPANESE, 5, PS2_KEY_F12)
 };
 
 extern const uint8_t ROOT_KEYS[12] = {
