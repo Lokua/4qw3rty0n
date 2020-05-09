@@ -38,9 +38,9 @@ struct programState
   Scale *scale = &scales[1];
   int8_t octaveOffset = 3;
   uint8_t root = 0;
-  uint8_t rowOffsets[4] = {0, 0, 0, 0};
-  uint8_t printMode = PRINT_MODE_LIVE;
   uint8_t lastNote = 0;
+  bool shift = false;
+  uint8_t printMode = PRINT_MODE_LIVE;
 
   uint8_t keys[N_KEYS][2] = {
     // row 1
@@ -141,7 +141,9 @@ void loop() {
 #endif
 
   if (isKeyUp(key)) {
-    if (isNote && !state.hold) {
+    if (isShift(keyCode)) {
+      state.shift = false;
+    } else if (isNote && !state.hold) {
       sendNoteOff(note);
       state.heldNotes[note] = false;
     }
@@ -149,10 +151,7 @@ void loop() {
     return;
   }
 
-  if (isNote) {
-    if (state.heldNotes[note]) {
-      sendNoteOff(note);
-    }
+  if (isNote && !state.heldNotes[note]) {
     sendNoteOn(note);
     state.heldNotes[note] = true;
     state.lastNote = note;
@@ -167,6 +166,8 @@ void loop() {
   } else if (isPanicButton(keyCode)) {
     sendAllNotesOff();
     initHeldKeys();
+  } else if (isShift(keyCode)) {
+    state.shift = true;
   }
 
   if (!isNumLockOn()) {
@@ -196,35 +197,19 @@ void initHeldKeys() {
 }
 
 void setScale(uint8_t keyCode) {
-  for (uint8_t i = 0; i < sizeof(scales); i++) {
+  uint8_t i = state.shift ? 16 : 0;
+  
+  for (i; i < sizeof(scales) / 2; i++) {
     if (keyCode == scales[i].keyCode) {
       state.scale = &scales[i];
       break;
     }
   }
 
-  updateRowOffsets();
+  uint8_t row4Offset = state.scale->size - 1;
 
-  uint8_t key = 0;
-  uint8_t row = 0;
-  uint8_t j = 0;
-
-  for (uint8_t i = 0; i < N_KEYS; i++) {
-    key = state.keys[i][0];
-
-    if (key == PS2_KEY_A) {
-      row = 1;
-      j = 0;
-    } else if (key == PS2_KEY_Q) {
-      row = 2;
-      j = 0;
-    } else if (key == PS2_KEY_SINGLE) {
-      row = 3;
-      j = 0;
-    }
-
-    state.keys[i][1] = j + state.rowOffsets[row];
-    j++;
+  for (i = 0; i < N_KEYS; i++) {
+    state.keys[i + 36][1] = i + row4Offset;
   }
 }
 
@@ -239,29 +224,6 @@ void setRoot(uint8_t keyCode) {
       state.root = i;
       return;
     }
-  }
-}
-
-void updateRowOffsets() {
-  switch (state.scale->size) {
-    case 7:
-      state.rowOffsets[0] = 0;
-      state.rowOffsets[1] = 2;
-      state.rowOffsets[2] = 4;
-      state.rowOffsets[3] = 6;
-      break;
-    case 6:
-      state.rowOffsets[0] = 0;
-      state.rowOffsets[1] = 2;
-      state.rowOffsets[2] = 4;
-      state.rowOffsets[3] = 5;
-      break;
-    case 5:
-      state.rowOffsets[0] = 0;
-      state.rowOffsets[1] = 2;
-      state.rowOffsets[2] = 4;
-      state.rowOffsets[3] = 4;
-      break;
   }
 }
 
@@ -330,6 +292,10 @@ bool isPanicButton(uint8_t keyCode) {
 
 bool isNumLockOn() {
   return !!(keyboard.getLock() & PS2_LOCK_NUM);
+}
+
+bool isShift(uint8_t keyCode) {
+  return keyCode == PS2_KEY_L_SHIFT;
 }
 
 void sendNoteOn(uint8_t note) {
