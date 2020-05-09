@@ -121,10 +121,9 @@ void setup() {
   delay(2000);
   lcd.clear();
   lcd.setCursor(0, 1);
-  lcd.print("R=   O=  N=     ");
+  lcd.print("R=    N=       ");
   lcdUpdateScale();
-  lcdUpdateOctave();
-  lcdUpdateRoot();
+  lcdUpdateRootAndOctave();
   lcdUpdateNote();
   lcdUpdateHold();
 }
@@ -171,10 +170,10 @@ void loop() {
     lcdUpdateHold();
   } else if (isOctave(keyCode)) {
     setOctave(keyCode);
-    lcdUpdateOctave();
+    lcdUpdateRootAndOctave();
   } else if (isRoot(keyCode)) {
     setRoot(keyCode);
-    lcdUpdateRoot();
+    lcdUpdateRootAndOctave();
   } else if (isPanicButton(keyCode)) {
     sendAllNotesOff();
     initHeldKeys();
@@ -222,7 +221,7 @@ void setScale(uint8_t keyCode) {
 }
 
 void setOctave(uint8_t keyCode) {
-  uint8_t x = state.octaveOffset + (keyCode == PS2_KEY_UP_ARROW ? 1 : -1);
+  int8_t x = state.octaveOffset + (keyCode == PS2_KEY_UP_ARROW || keyCode == PS2_KEY_KP_PLUS ? 1 : -1);
   state.octaveOffset = x < -2 ? -2 : x > 8 ? 8 : x;
 }
 
@@ -238,22 +237,15 @@ void setRoot(uint8_t keyCode) {
 uint8_t getMIDINote(uint8_t keyCodeIndex) {
   uint8_t pitchIndex = keyCodeIndex % state.scale->size;
   uint8_t pitch = (state.scale->scale[pitchIndex] % 12) + state.root;
-  uint8_t octave = (floor(keyCodeIndex / state.scale->size) * 12) + (state.octaveOffset * 12);
-
-  return octave + pitch;
+  int8_t octave = (floor(keyCodeIndex / state.scale->size) * 12) + ((state.octaveOffset + 2) * 12);
+  uint8_t note = octave + pitch;
+  
+  return note > 127 ? 127 : note;
 }
 
 bool isKeyUp(uint16_t key) {
   uint16_t status_ = key >> 8;
   return status_ == 0x80 || status_ == 0x81;
-}
-
-bool isAlphaKey(uint8_t keyCode) {
-  return keyCode >= PS2_KEY_A && keyCode <= PS2_KEY_Z;
-}
-
-bool isNumericKey(uint8_t keyCode) {
-  return keyCode >= PS2_KEY_0 && keyCode <= PS2_KEY_9;
 }
 
 bool isScale(uint8_t keyCode) {
@@ -321,18 +313,18 @@ void sendAllNotesOff() {
 }
 
 void sendMIDI(uint8_t status, uint8_t data1, uint8_t data2) {
-  if (DEBUG_PS2) {
-    Serial.print(status);
-    Serial.print(", ");
-    Serial.print(data1);
-    Serial.print(", ");
-    Serial.print(data2);
-    Serial.print("\n---\n");
-  } else {
-    Serial.write(status);
-    Serial.write(data1);
-    Serial.write(data2);
-  }
+#if (DEBUG_PS2)
+  Serial.print(status);
+  Serial.print(", ");
+  Serial.print(data1);
+  Serial.print(", ");
+  Serial.print(data2);
+  Serial.print("\n---\n");
+#else
+  Serial.write(status);
+  Serial.write(data1);
+  Serial.write(data2);
+#endif
 }
 
 void lcdUpdateScale() {
@@ -346,60 +338,36 @@ void lcdUpdateScale() {
   lcd.print(state.lcdLine0);
 }
 
-void lcdUpdateOctave() {
-  lcd.setCursor(7, 1);
-  lcd.print(state.octaveOffset);
-}
-
-void lcdUpdateRoot() {
+void lcdUpdateRootAndOctave() {
   char * note = NOTES[state.root];
+  note = state.octaveOffset < 0 ? strlwr(note) : note;
 
   lcd.setCursor(2, 1);
   lcd.print(note);
-  
+
   if (strlen(note) == 1) {
-    lcd.print(" ");
+    lcd.print("-");
   }
+
+  lcd.print(abs(state.octaveOffset));
 }
 
 void lcdUpdateNote() {
   char * note = NOTES[state.lastNote % 12];
-  
-  lcd.setCursor(11, 1);
+  int8_t octave = (int8_t) floor(state.lastNote / 12);
+  note = octave < 0 ? strlwr(note) : note;
+
+  lcd.setCursor(8, 1);
   lcd.print(note);
-  lcd.print((uint8_t) floor(state.lastNote / 12));
 
   if (strlen(note) == 1) {
-    lcd.print(" ");
+    lcd.print("-");
   }
+
+  lcd.print(abs(octave));
 }
 
 void lcdUpdateHold() {
   lcd.setCursor(15, 1);
-  Serial.println(state.hold);
   lcd.print(state.hold ? "H" : " ");
-}
-
-void lcdDebug(char *message) {
-  if (state.printMode == PRINT_MODE_DEBUG) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(message);
-  }
-}
-void lcdDebug(uint8_t message) {
-  if (state.printMode == PRINT_MODE_DEBUG) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(message);
-  }
-}
-void lcdDebug(uint8_t a, uint8_t b) {
-  if (state.printMode == PRINT_MODE_DEBUG) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(a);
-    lcd.print(" ");
-    lcd.print(b);
-  }
 }
