@@ -1,5 +1,5 @@
-#define USE_I2C 1
-#define DEBUG_PS2 0
+#define USE_I2C 0
+#define DEBUG_PS2 1
 
 #if (USE_I2C)
 #include <DFRobot_LCD.h>
@@ -184,6 +184,7 @@ void loop() {
   if (!isNumLockOn()) {
     keyboard.setLock(PS2_LOCK_NUM);
     state.root = 9;
+    lcdUpdateRootAndOctave();
   }
 }
 
