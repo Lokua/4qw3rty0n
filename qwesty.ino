@@ -178,6 +178,7 @@ void loop() {
   if (isRoot(keyCode) || isScale(keyCode) ||  isOctave(keyCode)) {
     lcdPrint(keyCode);
   }
+  //  lcdPrint(keyCode);
 }
 
 int8_t getKeyIndex(uint8_t keyCode) {
@@ -198,7 +199,7 @@ void initHeldKeys() {
 
 void setScale(uint8_t keyCode) {
   uint8_t i = state.shift ? 16 : 0;
-  
+
   for (i; i < sizeof(scales) / 2; i++) {
     if (keyCode == scales[i].keyCode) {
       state.scale = &scales[i];
@@ -208,8 +209,8 @@ void setScale(uint8_t keyCode) {
 
   uint8_t row4Offset = state.scale->size - 1;
 
-  for (i = 0; i < N_KEYS; i++) {
-    state.keys[i + 36][1] = i + row4Offset;
+  for (i = 36; i < N_KEYS; i++) {
+    state.keys[i][1] = (i - 36) + row4Offset;
   }
 }
 
@@ -357,18 +358,21 @@ void lcdPrint(uint8_t keyCode) {
 void lcdDebug(char *message) {
   if (state.printMode == PRINT_MODE_DEBUG) {
     lcd.clear();
+    lcd.setCursor(0, 0);
     lcd.print(message);
   }
 }
 void lcdDebug(uint8_t message) {
   if (state.printMode == PRINT_MODE_DEBUG) {
     lcd.clear();
+    lcd.setCursor(0, 0);
     lcd.print(message);
   }
 }
 void lcdDebug(uint8_t a, uint8_t b) {
   if (state.printMode == PRINT_MODE_DEBUG) {
     lcd.clear();
+    lcd.setCursor(0, 0);
     lcd.print(a);
     lcd.print(" ");
     lcd.print(b);

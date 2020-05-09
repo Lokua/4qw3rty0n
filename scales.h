@@ -10,11 +10,6 @@ class Scale {
       size = size_;
       keyCode = keyCode_;
     }
-    Scale(char * name_, uint8_t * scale_, uint8_t size_) {
-      name = name_;
-      scale = scale_;
-      size = size_;
-    }
 };
 
 extern const uint8_t CHROMATIC[12] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
