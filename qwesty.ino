@@ -210,7 +210,7 @@ void loop() {
     setOctave(keyCode);
     updatePendingHeldNotesCount();
     lcdUpdateRootAndOctave();
-  } else if (isRoot(keyCode)) {
+  } else if (isRoot(keyCode) || isIncrementalTranspose(keyCode)) {
     setRoot(keyCode);
     updatePendingHeldNotesCount();
     lcdUpdateRootAndOctave();
@@ -287,11 +287,40 @@ void setOctave(uint8_t keyCode) {
 }
 
 void setRoot(uint8_t keyCode) {
-  for (uint8_t i = 0; i < 12; i++) {
-    if (keyCode == ROOT_KEYS[i]) {
-      state.root = i;
-      return;
+
+  if (keyCode == PS2_KEY_L_ARROW) {
+    if (state.root == 0) {
+      if (state.octave == -2) {
+      // We're at the lowest note in the lowest octave --- bail out. 
+      return; 
+      } else {
+      // decrement the octave, loop to the highest note
+      state.root = 11;
+      state.octave--; 
+      }
+    } else {
+      state.root--;
     }
+  } else if (keyCode == PS2_KEY_R_ARROW) {
+    if (state.root == 11) {
+      if (state.octave == 8) {
+        // we're at the highest note of the highest octave --- bail out. 
+        return; 
+      } else {
+        // increment the octave, loop to the lowest note
+        state.octave++;
+        state.root = 0;
+      }
+    } else {
+      state.root++;
+    }
+  } else {
+    for (uint8_t i = 0; i < 12; i++) {
+      if (keyCode == ROOT_KEYS[i]) {
+        state.root = i;
+        return;
+      }
+    } 
   }
 }
 
