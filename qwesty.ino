@@ -185,7 +185,7 @@ void loop() {
     setOctave(keyCode);
     updatePendingHeldNotesCount();
     lcdUpdateRootAndOctave();
-  } else if (isRoot(keyCode)) {
+  } else if (isRoot(keyCode) || isIncrementalTranspose(keyCode)) {
     setRoot(keyCode);
     updatePendingHeldNotesCount();
     lcdUpdateRootAndOctave();
@@ -260,11 +260,26 @@ void setOctave(uint8_t keyCode) {
 }
 
 void setRoot(uint8_t keyCode) {
-  for (uint8_t i = 0; i < 12; i++) {
-    if (keyCode == ROOT_KEYS[i]) {
-      state.root = i;
-      return;
+
+  if (keyCode == PS2_KEY_L_ARROW) {
+    if (state.root == 0) {
+      state.root = 11;
+    } else {
+      state.root--;
     }
+  } else if (keyCode == PS2_KEY_R_ARROW) {
+    if (state.root == 11) {
+      state.root = 0;
+    } else {
+      state.root++;
+    }
+  } else {
+    for (uint8_t i = 0; i < 12; i++) {
+      if (keyCode == ROOT_KEYS[i]) {
+        state.root = i;
+        return;
+      }
+    } 
   }
 }
 
