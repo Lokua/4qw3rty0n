@@ -1,12 +1,6 @@
-#define USE_I2C 1
 #define DEBUG_PS2 0
 
-#if (USE_I2C)
 #include <DFRobot_LCD.h>
-#else
-#include <LiquidCrystal.h>
-#endif
-
 #include <PS2KeyAdvanced.h>
 #include "scales.h"
 
@@ -15,18 +9,13 @@
 #define DEFAULT_VELOCITY 127
 #define DATA_PIN 4
 #define IRQ_PIN  3
-#define N_KEYS 50
+#define N_KEYS 49
 #define PRINT_MODE_DEBUG 0
 #define PRINT_MODE_LIVE 1
 #define PRINT_MODE_MIDI 2
 #define PRINT_MODE_HELP 3
 
-#if (USE_I2C)
 DFRobot_LCD lcd(16, 2);
-#else
-LiquidCrystal lcd(12, 11, 5, 8, 9, 2);
-#endif
-
 PS2KeyAdvanced keyboard;
 
 struct programState
@@ -57,7 +46,6 @@ struct programState
     {PS2_KEY_COMMA, 7},
     {PS2_KEY_DOT, 8},
     {PS2_KEY_DIV, 9},
-    {PS2_KEY_R_SHIFT, 10},
     // row 2
     {PS2_KEY_A, 2},
     {PS2_KEY_S, 3},
@@ -112,14 +100,9 @@ void setup() {
   keyboard.setNoRepeat(1);
   keyboard.setLock(PS2_LOCK_NUM);
 
-#if (USE_I2C)
   lcd.init();
   lcd.setRGB(50, 50, 50);
-#else
-  lcd.begin(16, 2);
-#endif
-
-  lcd.print("S-rOn v0.0.1");
+  lcd.print("4qw3rty0n v0.0.1");
   delay(2000);
   lcd.clear();
   lcd.setCursor(0, 1);
@@ -129,8 +112,8 @@ void setup() {
   lcdUpdateHold();
 }
 
-const long dimDisplayAtInterval = 5000;
-unsigned long lastEventTime = 0;
+const long dimDisplayAtInterval = 300000L;
+unsigned long lastEventTime = 0L;
 
 void loop() {
   unsigned long now = millis();
@@ -138,10 +121,7 @@ void loop() {
   if (!keyboard.available()) {
     if (state.displayOn && now - lastEventTime >= dimDisplayAtInterval) {
       lcd.noDisplay();
-#if (USE_I2C)
-      //      lcd.setRGB(0, 0, 0);
-      lcd.setBacklight(0);
-#endif
+      lcd.setRGB(0, 0, 0);
       state.displayOn = false;
     }
 
@@ -152,10 +132,7 @@ void loop() {
 
   if (!state.displayOn) {
     lcd.display();
-#if (USE_I2C)
-    //    lcd.setRGB(50, 50, 50);
-    lcd.setBacklight(1);
-#endif
+    lcd.setRGB(50, 50, 50);
     state.displayOn = true;
   }
 
@@ -198,7 +175,6 @@ void loop() {
     state.heldNotes[note] = keyCode;
     state.lastNote = note;
     lcdUpdateNote();
-
   } else if (isScale(keyCode)) {
     setScale(keyCode);
     updatePendingHeldNotesCount();
@@ -210,8 +186,12 @@ void loop() {
     setOctave(keyCode);
     updatePendingHeldNotesCount();
     lcdUpdateRootAndOctave();
-  } else if (isRoot(keyCode) || isIncrementalTranspose(keyCode)) {
+  } else if (isRoot(keyCode)) {
     setRoot(keyCode);
+    updatePendingHeldNotesCount();
+    lcdUpdateRootAndOctave();
+  } else if (isIncrementalTranspose(keyCode)) {
+    incrementRoot(keyCode);
     updatePendingHeldNotesCount();
     lcdUpdateRootAndOctave();
   } else if (isPanicButton(keyCode)) {
@@ -219,12 +199,6 @@ void loop() {
     initHeldNotes();
   } else if (isShift(keyCode)) {
     state.shift = true;
-  }
-
-  if (!isNumLockOn()) {
-    keyboard.setLock(PS2_LOCK_NUM);
-    state.root = 9;
-    lcdUpdateRootAndOctave();
   }
 }
 
@@ -287,40 +261,37 @@ void setOctave(uint8_t keyCode) {
 }
 
 void setRoot(uint8_t keyCode) {
+  for (uint8_t i = 0; i < 12; i++) {
+    if (keyCode == ROOT_KEYS[i]) {
+      state.root = i;
+      return;
+    }
+  }
+}
 
+void incrementRoot(uint8_t keyCode) {
   if (keyCode == PS2_KEY_L_ARROW) {
     if (state.root == 0) {
       if (state.octave == -2) {
-      // We're at the lowest note in the lowest octave --- bail out. 
-      return; 
-      } else {
-      // decrement the octave, loop to the highest note
-      state.root = 11;
-      state.octave--; 
+        return;
       }
+
+      state.root = 11;
+      state.octave--;
     } else {
       state.root--;
     }
-  } else if (keyCode == PS2_KEY_R_ARROW) {
+  } else {
     if (state.root == 11) {
       if (state.octave == 8) {
-        // we're at the highest note of the highest octave --- bail out. 
-        return; 
-      } else {
-        // increment the octave, loop to the lowest note
-        state.octave++;
-        state.root = 0;
+        return;
       }
+
+      state.octave++;
+      state.root = 0;
     } else {
       state.root++;
     }
-  } else {
-    for (uint8_t i = 0; i < 12; i++) {
-      if (keyCode == ROOT_KEYS[i]) {
-        state.root = i;
-        return;
-      }
-    } 
   }
 }
 
@@ -358,30 +329,21 @@ bool isIncrementalTranspose(uint8_t keyCode) {
 }
 
 bool isRoot(uint8_t keyCode) {
-  return keyCode == PS2_KEY_KP1 || // C
-         keyCode == PS2_KEY_KP2 || // C#
-         keyCode == PS2_KEY_KP3 || // D
-         keyCode == PS2_KEY_KP4 || // D#
-         keyCode == PS2_KEY_KP5 || // E
-         keyCode == PS2_KEY_KP6 || // F
-         keyCode == PS2_KEY_KP7 || // F#
-         keyCode == PS2_KEY_KP8 || // G
-         keyCode == PS2_KEY_KP9 || // G#
-         keyCode == PS2_KEY_NUM || // A
-         keyCode == PS2_KEY_KP_DIV || // A#
-         keyCode == PS2_KEY_KP_TIMES; // B
+  for (uint8_t i = 0; i < 12; i++) {
+    if (keyCode == ROOT_KEYS[i]) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 bool isPanicButton(uint8_t keyCode) {
   return keyCode == PS2_KEY_DELETE || keyCode == PS2_KEY_KP_DOT;
 }
 
-bool isNumLockOn() {
-  return !!(keyboard.getLock() & PS2_LOCK_NUM);
-}
-
 bool isShift(uint8_t keyCode) {
-  return keyCode == PS2_KEY_L_SHIFT;
+  return keyCode == PS2_KEY_L_SHIFT || keyCode == PS2_KEY_R_SHIFT;
 }
 
 void sendNoteOn(uint8_t note) {
