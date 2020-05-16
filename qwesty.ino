@@ -1,12 +1,6 @@
-#define USE_I2C 1
 #define DEBUG_PS2 0
 
-#if (USE_I2C)
 #include <DFRobot_LCD.h>
-#else
-#include <LiquidCrystal.h>
-#endif
-
 #include <PS2KeyAdvanced.h>
 #include "scales.h"
 
@@ -21,12 +15,7 @@
 #define PRINT_MODE_MIDI 2
 #define PRINT_MODE_HELP 3
 
-#if (USE_I2C)
 DFRobot_LCD lcd(16, 2);
-#else
-LiquidCrystal lcd(12, 11, 5, 8, 9, 2);
-#endif
-
 PS2KeyAdvanced keyboard;
 
 struct programState
@@ -112,13 +101,8 @@ void setup() {
   keyboard.setNoRepeat(1);
   keyboard.setLock(PS2_LOCK_NUM);
 
-#if (USE_I2C)
   lcd.init();
   lcd.setRGB(50, 50, 50);
-#else
-  lcd.begin(16, 2);
-#endif
-
   lcd.print("S-rOn v0.0.1");
   delay(2000);
   lcd.clear();
@@ -129,7 +113,7 @@ void setup() {
   lcdUpdateHold();
 }
 
-const long dimDisplayAtInterval = 5000;
+const long dimDisplayAtInterval = 1000 * 60 * 5;
 unsigned long lastEventTime = 0;
 
 void loop() {
@@ -138,10 +122,7 @@ void loop() {
   if (!keyboard.available()) {
     if (state.displayOn && now - lastEventTime >= dimDisplayAtInterval) {
       lcd.noDisplay();
-#if (USE_I2C)
-      //      lcd.setRGB(0, 0, 0);
-      lcd.setBacklight(0);
-#endif
+      lcd.setRGB(0, 0, 0);
       state.displayOn = false;
     }
 
@@ -152,10 +133,7 @@ void loop() {
 
   if (!state.displayOn) {
     lcd.display();
-#if (USE_I2C)
-    //    lcd.setRGB(50, 50, 50);
-    lcd.setBacklight(1);
-#endif
+    lcd.setRGB(50, 50, 50);
     state.displayOn = true;
   }
 
@@ -198,7 +176,6 @@ void loop() {
     state.heldNotes[note] = keyCode;
     state.lastNote = note;
     lcdUpdateNote();
-
   } else if (isScale(keyCode)) {
     setScale(keyCode);
     updatePendingHeldNotesCount();
@@ -291,12 +268,12 @@ void setRoot(uint8_t keyCode) {
   if (keyCode == PS2_KEY_L_ARROW) {
     if (state.root == 0) {
       if (state.octave == -2) {
-      // We're at the lowest note in the lowest octave --- bail out. 
-      return; 
+        // We're at the lowest note in the lowest octave --- bail out.
+        return;
       } else {
-      // decrement the octave, loop to the highest note
-      state.root = 11;
-      state.octave--; 
+        // decrement the octave, loop to the highest note
+        state.root = 11;
+        state.octave--;
       }
     } else {
       state.root--;
@@ -304,8 +281,8 @@ void setRoot(uint8_t keyCode) {
   } else if (keyCode == PS2_KEY_R_ARROW) {
     if (state.root == 11) {
       if (state.octave == 8) {
-        // we're at the highest note of the highest octave --- bail out. 
-        return; 
+        // we're at the highest note of the highest octave --- bail out.
+        return;
       } else {
         // increment the octave, loop to the lowest note
         state.octave++;
@@ -320,7 +297,7 @@ void setRoot(uint8_t keyCode) {
         state.root = i;
         return;
       }
-    } 
+    }
   }
 }
 
