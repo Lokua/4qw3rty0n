@@ -9,7 +9,7 @@
 #define DEFAULT_VELOCITY 127
 #define DATA_PIN 4
 #define IRQ_PIN  3
-#define N_KEYS 49
+#define N_KEYS 50
 #define PRINT_MODE_DEBUG 0
 #define PRINT_MODE_LIVE 1
 #define PRINT_MODE_MIDI 2
