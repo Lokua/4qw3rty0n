@@ -1,4 +1,4 @@
-#define DEBUG_PS2 1
+#define DEBUG_PS2 0
 
 #include <DFRobot_LCD.h>
 #include <PS2KeyAdvanced.h>
@@ -9,7 +9,7 @@
 #define DEFAULT_VELOCITY 127
 #define DATA_PIN 4
 #define IRQ_PIN  3
-#define N_KEYS 50
+#define N_KEYS 49
 #define PRINT_MODE_DEBUG 0
 #define PRINT_MODE_LIVE 1
 #define PRINT_MODE_MIDI 2
@@ -46,7 +46,6 @@ struct programState
     {PS2_KEY_COMMA, 7},
     {PS2_KEY_DOT, 8},
     {PS2_KEY_DIV, 9},
-    {PS2_KEY_R_SHIFT, 10},
     // row 2
     {PS2_KEY_A, 2},
     {PS2_KEY_S, 3},
@@ -113,8 +112,8 @@ void setup() {
   lcdUpdateHold();
 }
 
-const long dimDisplayAtInterval = 1000 * 60 * 5;
-unsigned long lastEventTime = 0;
+const long dimDisplayAtInterval = 300000L;
+unsigned long lastEventTime = 0L;
 
 void loop() {
   unsigned long now = millis();
@@ -201,10 +200,6 @@ void loop() {
   } else if (isShift(keyCode)) {
     state.shift = true;
   }
-
-//  if (!isNumLockOn()) {
-//    keyboard.setLock(PS2_LOCK_NUM);
-//  }
 }
 
 int8_t getKeyIndex(uint8_t keyCode) {
@@ -347,12 +342,8 @@ bool isPanicButton(uint8_t keyCode) {
   return keyCode == PS2_KEY_DELETE || keyCode == PS2_KEY_KP_DOT;
 }
 
-bool isNumLockOn() {
-  return !!(keyboard.getLock() & PS2_LOCK_NUM);
-}
-
 bool isShift(uint8_t keyCode) {
-  return keyCode == PS2_KEY_L_SHIFT;
+  return keyCode == PS2_KEY_L_SHIFT || keyCode == PS2_KEY_R_SHIFT;
 }
 
 void sendNoteOn(uint8_t note) {
