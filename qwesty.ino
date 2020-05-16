@@ -1,4 +1,4 @@
-#define DEBUG_PS2 0
+#define DEBUG_PS2 1
 
 #include <DFRobot_LCD.h>
 #include <PS2KeyAdvanced.h>
@@ -103,7 +103,7 @@ void setup() {
 
   lcd.init();
   lcd.setRGB(50, 50, 50);
-  lcd.print("S-rOn v0.0.1");
+  lcd.print("4qw3rty0n v0.0.1");
   delay(2000);
   lcd.clear();
   lcd.setCursor(0, 1);
@@ -187,8 +187,12 @@ void loop() {
     setOctave(keyCode);
     updatePendingHeldNotesCount();
     lcdUpdateRootAndOctave();
-  } else if (isRoot(keyCode) || isIncrementalTranspose(keyCode)) {
+  } else if (isRoot(keyCode)) {
     setRoot(keyCode);
+    updatePendingHeldNotesCount();
+    lcdUpdateRootAndOctave();
+  } else if (isIncrementalTranspose(keyCode)) {
+    incrementRoot(keyCode);
     updatePendingHeldNotesCount();
     lcdUpdateRootAndOctave();
   } else if (isPanicButton(keyCode)) {
@@ -198,11 +202,9 @@ void loop() {
     state.shift = true;
   }
 
-  if (!isNumLockOn()) {
-    keyboard.setLock(PS2_LOCK_NUM);
-    state.root = 9;
-    lcdUpdateRootAndOctave();
-  }
+//  if (!isNumLockOn()) {
+//    keyboard.setLock(PS2_LOCK_NUM);
+//  }
 }
 
 int8_t getKeyIndex(uint8_t keyCode) {
@@ -264,39 +266,36 @@ void setOctave(uint8_t keyCode) {
 }
 
 void setRoot(uint8_t keyCode) {
+  for (uint8_t i = 0; i < 12; i++) {
+    if (keyCode == ROOT_KEYS[i]) {
+      state.root = i;
+      return;
+    }
+  }
+}
 
+void incrementRoot(uint8_t keyCode) {
   if (keyCode == PS2_KEY_L_ARROW) {
     if (state.root == 0) {
       if (state.octave == -2) {
-        // We're at the lowest note in the lowest octave --- bail out.
         return;
-      } else {
-        // decrement the octave, loop to the highest note
-        state.root = 11;
-        state.octave--;
       }
+
+      state.root = 11;
+      state.octave--;
     } else {
       state.root--;
     }
-  } else if (keyCode == PS2_KEY_R_ARROW) {
+  } else {
     if (state.root == 11) {
       if (state.octave == 8) {
-        // we're at the highest note of the highest octave --- bail out.
         return;
-      } else {
-        // increment the octave, loop to the lowest note
-        state.octave++;
-        state.root = 0;
       }
+
+      state.octave++;
+      state.root = 0;
     } else {
       state.root++;
-    }
-  } else {
-    for (uint8_t i = 0; i < 12; i++) {
-      if (keyCode == ROOT_KEYS[i]) {
-        state.root = i;
-        return;
-      }
     }
   }
 }
@@ -335,18 +334,13 @@ bool isIncrementalTranspose(uint8_t keyCode) {
 }
 
 bool isRoot(uint8_t keyCode) {
-  return keyCode == PS2_KEY_KP1 || // C
-         keyCode == PS2_KEY_KP2 || // C#
-         keyCode == PS2_KEY_KP3 || // D
-         keyCode == PS2_KEY_KP4 || // D#
-         keyCode == PS2_KEY_KP5 || // E
-         keyCode == PS2_KEY_KP6 || // F
-         keyCode == PS2_KEY_KP7 || // F#
-         keyCode == PS2_KEY_KP8 || // G
-         keyCode == PS2_KEY_KP9 || // G#
-         keyCode == PS2_KEY_NUM || // A
-         keyCode == PS2_KEY_KP_DIV || // A#
-         keyCode == PS2_KEY_KP_TIMES; // B
+  for (uint8_t i = 0; i < 12; i++) {
+    if (keyCode == ROOT_KEYS[i]) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 bool isPanicButton(uint8_t keyCode) {

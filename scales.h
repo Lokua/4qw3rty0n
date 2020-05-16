@@ -71,6 +71,7 @@ Scale scales[] = {
 };
 
 extern const uint8_t ROOT_KEYS[12] = {
+  PS2_KEY_KP0,
   PS2_KEY_KP1,
   PS2_KEY_KP2,
   PS2_KEY_KP3,
@@ -80,7 +81,6 @@ extern const uint8_t ROOT_KEYS[12] = {
   PS2_KEY_KP7,
   PS2_KEY_KP8,
   PS2_KEY_KP9,
-  PS2_KEY_NUM,
   PS2_KEY_KP_DIV,
   PS2_KEY_KP_TIMES
 };
