@@ -9,7 +9,8 @@
 #define DEFAULT_VELOCITY 127
 #define DATA_PIN 4
 #define IRQ_PIN  3
-#define N_KEYS 50
+#define N_KEYS 49
+#define ROW_4_KEY_INDEX 35
 #define PRINT_MODE_DEBUG 0
 #define PRINT_MODE_LIVE 1
 #define PRINT_MODE_MIDI 2
@@ -254,8 +255,8 @@ void setScale(uint8_t keyCode) {
 
   uint8_t row4Offset = state.scale->size - 1;
 
-  for (i = 36; i < N_KEYS; i++) {
-    state.keys[i][1] = (i - 36) + row4Offset;
+  for (i = ROW_4_KEY_INDEX; i < N_KEYS; i++) {
+    state.keys[i][1] = (i - ROW_4_KEY_INDEX) + row4Offset;
   }
 }
 
