@@ -200,6 +200,10 @@ void loop() {
   } else if (isShift(keyCode)) {
     state.shift = true;
   }
+
+  if (!isNumLockOn()) {
+    keyboard.setLock(PS2_LOCK_NUM);
+  }
 }
 
 int8_t getKeyIndex(uint8_t keyCode) {
@@ -344,6 +348,10 @@ bool isPanicButton(uint8_t keyCode) {
 
 bool isShift(uint8_t keyCode) {
   return keyCode == PS2_KEY_L_SHIFT || keyCode == PS2_KEY_R_SHIFT;
+}
+
+bool isNumLockOn() {
+  return !!(keyboard.getLock() & PS2_LOCK_NUM);
 }
 
 void sendNoteOn(uint8_t note) {
