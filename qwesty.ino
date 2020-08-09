@@ -34,6 +34,7 @@ struct programState
   char lcdLine0[16];
   uint8_t pendingHeldNotesCount = 0;
   bool displayOn = false;
+  bool drumMode = false;
 
   uint8_t keys[N_KEYS][2] = {
     // row 1
@@ -200,6 +201,9 @@ void loop() {
     initHeldNotes();
   } else if (isShift(keyCode)) {
     state.shift = true;
+  } else if (isDrumMode(keyCode)) {
+    state.drumMode = !state.drumMode;
+    lcdUpdateDrumMode();
   }
 
   if (!isNumLockOn()) {
@@ -351,6 +355,10 @@ bool isShift(uint8_t keyCode) {
   return keyCode == PS2_KEY_L_SHIFT || keyCode == PS2_KEY_R_SHIFT;
 }
 
+bool isDrumMode(uint8_t keyCode) {
+  return keyCode == PS2_KEY_END;
+}
+
 bool isNumLockOn() {
   return !!(keyboard.getLock() & PS2_LOCK_NUM);
 }
@@ -425,6 +433,11 @@ void lcdUpdateNote() {
 }
 
 void lcdUpdateHold() {
-  lcd.setCursor(15, 1);
+  lcd.setCursor(15, 1);  
   lcd.print(state.hold ? "H" : " ");
+}
+
+void lcdUpdateDrumMode() {
+  lcd.setCursor(state.hold ? 14 : 15, 1);  
+  lcd.print(state.drumMode ? "D" : " ");
 }
