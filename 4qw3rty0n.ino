@@ -34,6 +34,7 @@ struct programState
   char lcdLine0[16];
   uint8_t pendingHeldNotesCount = 0;
   bool displayOn = false;
+  bool drumMode = false;
 
   uint8_t keys[N_KEYS][2] = {
     // row 1
@@ -90,7 +91,48 @@ struct programState
     {PS2_KEY_EQUAL, 18},
     {PS2_KEY_BS, 19}
   };
+
+  uint8_t drumKeys[N_KEYS][2] = {
+    // row 1
+    {PS2_KEY_Z, 0},
+    {PS2_KEY_X, 1},
+    {PS2_KEY_C, 2},
+    {PS2_KEY_V, 3},
+    {PS2_KEY_B, 4},
+    {PS2_KEY_N, 5},
+    {PS2_KEY_M, 6},
+    {PS2_KEY_COMMA, 7},
+    // row 2
+    {PS2_KEY_A, 8},
+    {PS2_KEY_S, 9},
+    {PS2_KEY_D, 10},
+    {PS2_KEY_F, 11},
+    {PS2_KEY_G, 12},
+    {PS2_KEY_H, 13},
+    {PS2_KEY_J, 14},
+    {PS2_KEY_K, 15},
+    // row 3
+    {PS2_KEY_Q, 16},
+    {PS2_KEY_W, 17},
+    {PS2_KEY_E, 18},
+    {PS2_KEY_R, 19},
+    {PS2_KEY_T, 20},
+    {PS2_KEY_Y, 21},
+    {PS2_KEY_U, 22},
+    {PS2_KEY_I, 23},
+    // row 4
+    {PS2_KEY_1, 24},
+    {PS2_KEY_2, 25},
+    {PS2_KEY_3, 26},
+    {PS2_KEY_4, 27},
+    {PS2_KEY_5, 28},
+    {PS2_KEY_6, 29},
+    {PS2_KEY_7, 30},
+    {PS2_KEY_8, 31},
+  };
 };
+
+
 typedef struct programState ProgramState;
 ProgramState state;
 
@@ -103,7 +145,7 @@ void setup() {
 
   lcd.init();
   lcd.setRGB(50, 50, 50);
-  lcd.print("4qw3rty0n v0.0.1");
+  lcd.print("4qw3rty0n v0.5.0");
   delay(2000);
   lcd.clear();
   lcd.setCursor(0, 1);
@@ -113,7 +155,7 @@ void setup() {
   lcdUpdateHold();
 }
 
-const long dimDisplayAtInterval = 300000L;
+const long dimDisplayAtInterval = 600000L;
 unsigned long lastEventTime = 0L;
 
 void loop() {
@@ -139,9 +181,14 @@ void loop() {
 
   uint16_t key = keyboard.read();
   uint8_t keyCode = key & 0xFF;
-  int8_t keyIndex = getKeyIndex(keyCode);
+  int8_t keyIndex = state.drumMode ? getKeyIndexForDrumMode(keyCode) : getKeyIndex(keyCode);
   bool isNote = keyIndex > -1;
-  int8_t note = isNote ? getMIDINote(keyIndex) : -1;
+  
+  int8_t note = isNote 
+    ? state.drumMode 
+      ? getMIDINoteForDrumMode(keyIndex) 
+      : getMIDINote(keyIndex) 
+    : -1;
 
 #if (DEBUG_PS2)
   if (!isKeyUp(key)) {
@@ -200,6 +247,10 @@ void loop() {
     initHeldNotes();
   } else if (isShift(keyCode)) {
     state.shift = true;
+  } else if (isDrumMode(keyCode)) {
+    state.drumMode = !state.drumMode;
+    updatePendingHeldNotesCount();
+    lcdUpdateScale();
   }
 
   if (!isNumLockOn()) {
@@ -215,6 +266,31 @@ int8_t getKeyIndex(uint8_t keyCode) {
   }
 
   return -1;
+}
+
+uint8_t getMIDINote(uint8_t keyCodeIndex) {
+  uint8_t pitchIndex = keyCodeIndex % state.scale->size;
+  uint8_t pitch = (state.scale->scale[pitchIndex] % 12) + state.root;
+  int8_t octave = ((keyCodeIndex / state.scale->size) * 12) + ((state.octave + 2) * 12);
+  uint8_t note = octave + pitch;
+
+  return note > 127 ? 127 : note;
+}
+
+int8_t getKeyIndexForDrumMode(uint8_t keyCode) {
+  for (uint8_t i = 0; i < N_KEYS; i++) {
+    if (state.drumKeys[i][0] == keyCode) {
+      return state.drumKeys[i][1];
+    }
+  }
+
+  return -1;
+}
+
+uint8_t getMIDINoteForDrumMode(uint8_t keyIndex) {
+  uint8_t note = keyIndex + ((state.octave + 2) * 12);
+  
+  return note > 127 ? 127 : note;
 }
 
 void initHeldNotes() {
@@ -300,15 +376,6 @@ void incrementRoot(uint8_t keyCode) {
   }
 }
 
-uint8_t getMIDINote(uint8_t keyCodeIndex) {
-  uint8_t pitchIndex = keyCodeIndex % state.scale->size;
-  uint8_t pitch = (state.scale->scale[pitchIndex] % 12) + state.root;
-  int8_t octave = ((keyCodeIndex / state.scale->size) * 12) + ((state.octave + 2) * 12);
-  uint8_t note = octave + pitch;
-
-  return note > 127 ? 127 : note;
-}
-
 bool isKeyUp(uint16_t key) {
   uint16_t status_ = key >> 8;
   return status_ == 0x80 || status_ == 0x81;
@@ -351,6 +418,10 @@ bool isShift(uint8_t keyCode) {
   return keyCode == PS2_KEY_L_SHIFT || keyCode == PS2_KEY_R_SHIFT;
 }
 
+bool isDrumMode(uint8_t keyCode) {
+  return keyCode == PS2_KEY_END;
+}
+
 bool isNumLockOn() {
   return !!(keyboard.getLock() & PS2_LOCK_NUM);
 }
@@ -375,8 +446,7 @@ void sendMIDI(uint8_t status, uint8_t data1, uint8_t data2) {
   Serial.print(", ");
   Serial.print(data1);
   Serial.print(", ");
-  Serial.print(data2);
-  Serial.print("\n---\n");
+  Serial.println(data2);
 #else
   Serial.write(status);
   Serial.write(data1);
@@ -385,14 +455,19 @@ void sendMIDI(uint8_t status, uint8_t data1, uint8_t data2) {
 }
 
 void lcdUpdateScale() {
-  uint8_t scaleNameLength = strlen(state.scale->name);
-
-  for (uint8_t i = 0; i < 16; i++) {
-    state.lcdLine0[i] = i < scaleNameLength ? state.scale->name[i] : ' ';
-  }
-
   lcd.setCursor(0, 0);
-  lcd.print(state.lcdLine0);
+
+  if (state.drumMode) {
+    lcd.print("Drum Mode       ");
+  } else {
+    uint8_t scaleNameLength = strlen(state.scale->name);
+
+    for (uint8_t i = 0; i < 16; i++) {
+      state.lcdLine0[i] = i < scaleNameLength ? state.scale->name[i] : ' ';
+    }
+  
+    lcd.print(state.lcdLine0);
+  }
 }
 
 void lcdUpdateRootAndOctave() {
