@@ -27,7 +27,9 @@ struct programState
   uint8_t scaleIndex = 0;
   Scale *scale = &scales[1];
   int8_t octave = 3;
+  int8_t stashedOctave = 3;
   uint8_t root = 0;
+  uint8_t stashedRoot = 0;
   uint8_t lastNote = 0;
   bool shift = false;
   uint8_t printMode = PRINT_MODE_LIVE;
@@ -248,9 +250,7 @@ void loop() {
   } else if (isShift(keyCode)) {
     state.shift = true;
   } else if (isDrumMode(keyCode)) {
-    state.drumMode = !state.drumMode;
-    updatePendingHeldNotesCount();
-    lcdUpdateScale();
+    onChangeDrumMode();
   }
 
   if (!isNumLockOn()) {
@@ -374,6 +374,24 @@ void incrementRoot(uint8_t keyCode) {
       state.root++;
     }
   }
+}
+
+void onChangeDrumMode() {
+  state.drumMode = !state.drumMode;
+
+  if (state.drumMode) {
+    state.stashedOctave = state.octave;
+    state.stashedRoot = state.root;
+    state.root = 0;
+    state.octave = 1;
+  } else {
+    state.octave = state.stashedOctave;
+    state.root = state.stashedRoot;
+  }
+  
+  updatePendingHeldNotesCount();
+  lcdUpdateScale();
+  lcdUpdateRootAndOctave();
 }
 
 bool isKeyUp(uint16_t key) {
