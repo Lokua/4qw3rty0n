@@ -157,7 +157,10 @@ void setup() {
 }
 
 void loop() {
-  unsigned long now = millis();
+  if (!keyboard.available()) {
+    return;
+  }
+  
   uint16_t key = keyboard.read();
   uint8_t keyCode = key & 0xFF;
   int8_t keyIndex = state.drumMode ? getKeyIndexForDrumMode(keyCode) : getKeyIndex(keyCode);
