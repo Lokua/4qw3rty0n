@@ -3,7 +3,7 @@
 PS2 Keyboard to MIDI with an Accordion style layout
 
 ## Key Map
-> `KP` means keypad (number pad on right)
+> `KP`: Keypad (number pad on right)
 
 - `DELETE`, `KP_DOT`: Panic (all notes off)
 - `END`: Toggle drum mode
