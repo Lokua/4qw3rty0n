@@ -35,7 +35,6 @@ struct programState
   uint8_t printMode = PRINT_MODE_LIVE;
   char lcdLine0[16];
   uint8_t pendingHeldNotesCount = 0;
-  bool displayOn = false;
   bool drumMode = false;
 
   uint8_t keys[N_KEYS][2] = {
@@ -157,30 +156,8 @@ void setup() {
   lcdUpdateHold();
 }
 
-const long dimDisplayAtInterval = 600000L;
-unsigned long lastEventTime = 0L;
-
 void loop() {
   unsigned long now = millis();
-
-  if (!keyboard.available()) {
-    if (state.displayOn && now - lastEventTime >= dimDisplayAtInterval) {
-      lcd.noDisplay();
-      lcd.setRGB(0, 0, 0);
-      state.displayOn = false;
-    }
-
-    return;
-  }
-
-  lastEventTime = now;
-
-  if (!state.displayOn) {
-    lcd.display();
-    lcd.setRGB(50, 50, 50);
-    state.displayOn = true;
-  }
-
   uint16_t key = keyboard.read();
   uint8_t keyCode = key & 0xFF;
   int8_t keyIndex = state.drumMode ? getKeyIndexForDrumMode(keyCode) : getKeyIndex(keyCode);
